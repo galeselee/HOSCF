@@ -189,10 +189,29 @@ Tensor& ttvc_except_dim(Tensor &A, std::vector<Tensor> &U, int dim0, int dim1) {
     return block_J;
 }
 
-std::tuple<Tensor&, double> svd_solve(Tensor &J) { // evg
-// dsyev
-    
+void svd_solve(Tensor &J, Tensor &eigvec, double &eig) {
+    lapack_int n = J.shape[0];
+    lapack_int lda = n;
+    double w[n];
+    double *tmp_j = (double)std::malloc(sizeof(double) * J.size);
+    memcpy(tmp_j, J.data, sizeof(double) * J.size);
 
+    // mkl omp
+    auto inf0 = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, tmp_j, w);
+    if (info != 0) {
+        std::cout << "Error syev @" << __line__ << std::endl;
+    }
+    eig = w[n-1];
+    int idx = n - 1;
+    if (abs(w[0] > abs(w[n-1]))) {
+        eig = w[0];
+        idx = 0;
+    }
+    for (int ii = 0; ii < n; ii++) {
+        eigvec.data[ii] = tmp_j[ii*n+idx];
+    }
+    std::free(tmp_j);
+    return ;
 }
 
 double cal_res(Tensor& J, Tensor &X) {
@@ -251,31 +270,14 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
         
         iter++;
 
-        // update U
-        // lambda X 赋值问题
-        auto [eigvec, vec] = svd_solve(J);
+        svd_solve(J, X, lambda);
 
     }
     // assign U
 }
 
-bool test_svd() {
 
-}
-
-bool test_ttv_except_dim(Tensor &A, std::vector<Tensor> &U) {
-
-}
-
-bool test_ttv_cal_lambda(Tensor &A, std::vector<Tensor> &U) {
-
-}
-
-bool test_cal_res() {
-
-}
-
-int main() {
+int main(int argc, char **argv) {
     vint shapeA = {100,10,10,10,10,10};
     int ndim = shapeA.size();
     Tensor A;
@@ -296,7 +298,7 @@ int main() {
                 A.data[ii*A.shape[1]*A.shape[2]*A.shape[3]+jj*A.shape[2]*A.shape[3]+kk*A.shape[3]+ll] 
                     = std::sin(ii+jj+kk+ll);
     }
-
+    
     std::vector<Tensor> U;
     for(int ii = 0; ii < ndim; ii++) {
         Tensor u;
@@ -312,63 +314,7 @@ int main() {
             u.data[jj] /= a;
         U.push_back(u);
     }
-    if (test_ttv_except_dim(A, U)) {
-        std::cout << "Error ttv_except_dim" << std::endl;
-        exit(1);
-    }
-    if (test_ttv_cal_lambda(A, U)) {
-        std::cout << "Error ttv_cal_lambda" << std::endl;
-        exit(1);
-    }
-    if (test_svd()) {
-        std::cout << "Error svd" << std::endl;
-        exit(1);
-    }
-    if (test_cal_res()) {
-        std::cout << "Error cal_res" << std::endl;
-        exit(1);
-    }
-
+    auto tt = tnow();
+    double lamb = scf(A, U, 1e-12, 100);
+    pti(tt);
 }
-
-// int main(int argc, char **argv) {
-//     vint shapeA = {100,10,10,10,10,10};
-//     int ndim = shapeA.size();
-//     Tensor A;
-//     for (int ii = 0; ii < ndim; ii++) {
-//         A.shape.push_back(shapeA[ii]);
-//     }
-//     A.ndim = A.shape.size();
-//     A.size = 1;
-//     for(int ii = 0; ii < ndim; ii++)
-//         A.size *= A.shape[ii];
-//     A.data = (double *)std::malloc(sizeof(double) * A.size);
-//     ref_count[A.data] = 1;
-
-//     for(int ii = 0; ii < A.shape[0]; ii++) {
-//         for(int jj = 0; jj < A.shape[1]; jj++)
-//             for(int kk = 0; kk < A.shape[2]; kk++)
-//                 for(int ll = 0; ll < A.shape[3];ll++)
-//                 A.data[ii*A.shape[1]*A.shape[2]*A.shape[3]+jj*A.shape[2]*A.shape[3]+kk*A.shape[3]+ll] 
-//                     = std::sin(ii+jj+kk+ll);
-//     }
-    
-//     std::vector<Tensor> U;
-//     for(int ii = 0; ii < ndim; ii++) {
-//         Tensor u;
-//         u.ndim = 1;
-//         u.size = shapeA[ii];
-//         u.shape.push_back(shapeA[ii]);
-//         u.data = (double*)std::malloc(sizeof(double) * u.size);
-//         ref_count[u.data] ++;
-//         for(int jj = 0; jj < u.size; jj++)
-//             u.data[jj] = randn();
-//         double a = fnorm(u);
-//         for(int jj = 0; jj < u.size; jj++)
-//             u.data[jj] /= a;
-//         U.push_back(u);
-//     }
-//     auto tt = tnow();
-//     double lamb = scf(A, U, 1e-12, 100);
-//     pti(tt);
-// }
