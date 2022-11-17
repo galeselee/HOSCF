@@ -150,7 +150,8 @@ Tensor& ttvc_except_dim(Tensor &A, std::vector<Tensor> &U, int dim0, int dim1) {
     block_J.size = A.shape[dim0] * A.shape[dim1];
     block_J.ndim = 2;
     block_J.shape = {A.shape[dim0] * A.shape[dim1]};
-    block_J.data = 
+    block_J.data = (double*)std::malloc(sizeof(double) * block_J.size);
+    ref_count[block_J.data] = 1
     int dim[4];
     int cnt = 0;
     for (int ii = 0; ii < n; ii++) {
@@ -214,6 +215,23 @@ void svd_solve(Tensor &J, Tensor &eigvec, double &eig) {
     return ;
 }
 
+void fill_J_with_block(Tensor &J, vint shapeA, int x, int y, Tensor &block) {
+    int n_J = J.shape[0];
+    int x_begin = 0;
+    int y_begin = 0;
+    int n_x = shapeA[x];
+    int n_y = shapeA[y];
+    for (int i = 0; i < x; i++)
+        x_begin += shapeA[i];
+    for (int i = 0; i < y; i++)
+        y_begin += shapeA[i];
+    
+    for (int i = 0; i < n_x; i++) {
+        std::memcpy(J.data + (i+x_begin)*n_J + y_begin, mat.data + i*n_J, sizeof(double) * n_y);
+    }
+    return ;
+}
+
 double cal_res(Tensor& J, Tensor &X) {
 
 }
@@ -238,42 +256,46 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
     J.shape={n_j, n_j};
     J.data = (double *)std::malloc(sizeof(double) * J.size);
     std::memset(J.data, 0, sizeof(double) * J.size);
-    ref_count[J.data] ++;
+    ref_count[J.data] =1
     X.size = n_j;
     X.ndim = 1;
     X.shape = {X.size};
     X.data = (double *)std::malloc(sizeof(double) * X.size);
     for (int ii = 0; ii < n; ii++) {
-        std::memcpy(X.data + sizeof(double) * scan_nj[ii];
+        std::memcpy(X.data + sizeof(double) * scan_nj[ii],
                     U[ii].data, shape[ii] * sizeof(double));
     }
-    ref_count[X.data] ++;
+    ref_count[X.data] =1
     auto lambda = cal_lambda(J, X);
 
     while (iter < max_iter) {
-        // omp
+        // update J
+        // TODO : omp
         for (int ii = 1; ii < n - 1; ii++) {
             for (int jj = ii + 1; jj < n; jj++) {
                 auto block_J = ttvc_except_dim(A, U, ii, jj);
                 Nmul(block_J, n - 1);
-                // TODO
-                // push block_J / (N-1) to A
+                fill_J_with_block(J, shape, ii, jj, block_J);
             }
         }
         Nmul(X, fnorm(X));
 
-        // cal residual        
+        // TODO cal residual        
         auto res = cal_res(J, X);
         if (res < tol) {
             break;
         }
-        
-        iter++;
 
+        // update X and lambda
         svd_solve(J, X, lambda);
-
+        iter++;
     }
     // assign U
+    for (int ii = 0; ii < n; ii++) {
+        std::memcpy(U[ii].data, X.data + sizeof(double) * scan_nj[ii],
+                    shape[ii] * sizeof(double));
+    }
+    
 }
 
 
@@ -306,7 +328,7 @@ int main(int argc, char **argv) {
         u.size = shapeA[ii];
         u.shape.push_back(shapeA[ii]);
         u.data = (double*)std::malloc(sizeof(double) * u.size);
-        ref_count[u.data] ++;
+        ref_count[u.data] =1;
         for(int jj = 0; jj < u.size; jj++)
             u.data[jj] = randn();
         double a = fnorm(u);
