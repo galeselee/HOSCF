@@ -113,14 +113,18 @@ void Nmul(Tensor &A, double num) {
     }
 }
 
-double cal_lambda(Tensor &A, std::vector<Tensor> &U) {
+double cal_lambda(Tensor &A, Tensor &U) {
     int n = A.ndim;
     vint shape = A.shape;
     int lambda = 0;
     int scan[6];
     scan[5] = 1;
-    for (int ii = 4; ii >= 0; ii++) {
+    for (int ii = 4; ii >= 0; ii--) {
         scan[ii] = scan[ii+1] * shape[ii+1];
+    }
+    int scan_add[6] = {0};
+    for (int ii = 1; ii < 6; ii++) {
+        scan_add[ii] = scan_add[ii-1] + shape[ii-1];
     }
 
     for (int ii = 0; ii < shape[0]; ii++) {
@@ -134,8 +138,9 @@ double cal_lambda(Tensor &A, std::vector<Tensor> &U) {
                     for (int uu = 0; uu < shape[4]; uu++) {
                         int idx_uu = uu * scan[4] + idx_ll;
                         for (int tt = 0; tt < shape[5]; tt++) {
-                            lambda += A[idx_uu + tt] * U[0][ii] * U[1][jj]
-                                      * U[2][kk] * U[3][ll] * U[4][uu] * U[5][tt];
+                            lambda += A.data[idx_uu + tt] * U.data[scan_add[0]+ii] * U.data[scan_add[1]+jj]
+                                      * U.data[scan_add[2]+kk] * U.data[scan_add[3]+ll]
+                                      * U.data[scan_add[4]+uu] * U.data[scan_add[5]+tt];
                         }
                     }
                 }
@@ -145,23 +150,28 @@ double cal_lambda(Tensor &A, std::vector<Tensor> &U) {
     return lambda;
 }
 
-Tensor& ttvc_except_dim(Tensor &A, std::vector<Tensor> &U, int dim0, int dim1) {
+Tensor ttvc_except_dim(Tensor &A, Tensor &U, int dim0, int dim1) {
+    auto shape = A.shape;
     Tensor block_J;
     block_J.size = A.shape[dim0] * A.shape[dim1];
     block_J.ndim = 2;
     block_J.shape = {A.shape[dim0] * A.shape[dim1]};
     block_J.data = (double*)std::malloc(sizeof(double) * block_J.size);
-    ref_count[block_J.data] = 1
+    ref_count[block_J.data] = 1;
     int dim[4];
     int cnt = 0;
-    for (int ii = 0; ii < n; ii++) {
+    for (int ii = 0; ii < A.shape.size(); ii++) {
         if (ii == dim0 || ii == dim1) continue;
         dim[cnt++] = ii;
     }
     int scan[6];
     scan[5] = 1;
-    for (int ii = 4; ii >= 0; ii++) {
+    for (int ii = 4; ii >= 0; ii--) {
         scan[ii] = scan[ii+1] * shape[ii+1];
+    }
+    int scan_add[6] = {0};
+    for (int ii = 1; ii < 6; ii++) {
+        scan_add[ii] = scan_add[ii-1] + shape[ii-1];
     }
 
     for (int ii = 0; ii < shape[dim0]; ii++) {
@@ -171,15 +181,15 @@ Tensor& ttvc_except_dim(Tensor &A, std::vector<Tensor> &U, int dim0, int dim1) {
             int idx_jj = jj * scan[dim1] + idx_ii;
             int block_idx = block_idx_ii + jj;
             for (int kk = 0; kk < shape[dim[0]]; kk++) {
-                int idx_kk = kk * scan[dim[0] + idx_jj;
+                int idx_kk = kk * scan[dim[0]] + idx_jj;
                 for (int ll = 0; ll < shape[dim[1]]; ll++) {
                     int idx_ll = ll * scan[dim[1]] + idx_kk;
                     for (int uu = 0; uu < shape[dim[2]]; uu++) {
                         int idx_uu = uu * scan[dim[2]] + idx_ll;
                         for (int tt = 0; tt < shape[dim[3]]; tt++) {
                             block_J.data[block_idx] += 
-                                A[idx_uu + tt]* U[dim[0]][kk] * U[dim[1]][ll]
-                                * U[dim[2]][uu] * U[dim[3]][tt];
+                                A.data[idx_uu + tt]* U.data[scan_add[dim[0]]+kk] * U.data[scan_add[dim[1]]+ll]
+                                * U.data[scan_add[dim[2]]+uu] * U.data[scan_add[dim[3]]+tt];
                         }
                     }
                 }
@@ -194,13 +204,13 @@ void svd_solve(Tensor &J, Tensor &eigvec, double &eig) {
     lapack_int n = J.shape[0];
     lapack_int lda = n;
     double w[n];
-    double *tmp_j = (double)std::malloc(sizeof(double) * J.size);
+    double *tmp_j = (double*)std::malloc(sizeof(double) * J.size);
     memcpy(tmp_j, J.data, sizeof(double) * J.size);
 
     // mkl omp
-    auto inf0 = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, tmp_j, w);
+    auto info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, tmp_j, lda, w);
     if (info != 0) {
-        std::cout << "Error syev @" << __line__ << std::endl;
+        std::cout << "Error syev @" << __LINE__ << std::endl;
     }
     eig = w[n-1];
     int idx = n - 1;
@@ -227,12 +237,12 @@ void fill_J_with_block(Tensor &J, vint shapeA, int x, int y, Tensor &block) {
         y_begin += shapeA[i];
     
     for (int i = 0; i < n_x; i++) {
-        std::memcpy(J.data + (i+x_begin)*n_J + y_begin, mat.data + i*n_J, sizeof(double) * n_y);
+        std::memcpy(J.data + (i+x_begin)*n_J + y_begin, block.data + i*n_J, sizeof(double) * n_y);
     }
     return ;
 }
 
-double cal_res(Tensor& J, Tensor &X) {
+double cal_res(Tensor& J, Tensor &X, double lambda) {
     Tensor w_inter;
     w_inter.size = X.size;
     w_inter.ndim = 1;
@@ -252,7 +262,7 @@ double cal_res(Tensor& J, Tensor &X) {
     for (int ii = 0; ii < X.size; ii++) {
         w_inter.data[ii] -= rho * X.data[ii];
     }
-    norm(w_inter)/(norm(J)+abs(lambda));
+    return fnorm(w_inter)/(fnorm(J)+abs(lambda));
 }
 
 double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
@@ -275,7 +285,7 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
     J.shape={n_j, n_j};
     J.data = (double *)std::malloc(sizeof(double) * J.size);
     std::memset(J.data, 0, sizeof(double) * J.size);
-    ref_count[J.data] =1
+    ref_count[J.data] =1;
     X.size = n_j;
     X.ndim = 1;
     X.shape = {X.size};
@@ -284,7 +294,7 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
         std::memcpy(X.data + sizeof(double) * scan_nj[ii],
                     U[ii].data, shape[ii] * sizeof(double));
     }
-    ref_count[X.data] =1
+    ref_count[X.data] =1;
     auto lambda = cal_lambda(J, X);
 
     while (iter < max_iter) {
@@ -292,7 +302,7 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
         // TODO : omp
         for (int ii = 1; ii < n - 1; ii++) {
             for (int jj = ii + 1; jj < n; jj++) {
-                auto block_J = ttvc_except_dim(A, U, ii, jj);
+                auto block_J = ttvc_except_dim(A, X, ii, jj);
                 Nmul(block_J, n - 1);
                 fill_J_with_block(J, shape, ii, jj, block_J);
             }
@@ -314,6 +324,7 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
         std::memcpy(U[ii].data, X.data + sizeof(double) * scan_nj[ii],
                     shape[ii] * sizeof(double));
     }
+    return lambda;
     
 }
 
