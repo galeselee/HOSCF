@@ -233,7 +233,26 @@ void fill_J_with_block(Tensor &J, vint shapeA, int x, int y, Tensor &block) {
 }
 
 double cal_res(Tensor& J, Tensor &X) {
-
+    Tensor w_inter;
+    w_inter.size = X.size;
+    w_inter.ndim = 1;
+    w_inter.shape.push_back(X.shape[0]);
+    w_inter.data = (double*)std::malloc(sizeof(double)*X.size);
+    std::memset(w_inter.data, 0, sizeof(double) * X.size);
+    for (int ii = 0; ii < J.shape[0]; ii++) {
+        int idx = ii * J.shape[1];
+        for (int jj = 0; jj < J.shape[1]; jj++) {
+            w_inter.data[ii] += J.data[idx+jj] * X.data[jj];
+        }
+    }
+    double rho;
+    for (int ii = 0; ii < X.size; ii++) {
+        rho += w_inter.data[ii] * X.data[ii];
+    }
+    for (int ii = 0; ii < X.size; ii++) {
+        w_inter.data[ii] -= rho * X.data[ii];
+    }
+    norm(w_inter)/(norm(J)+abs(lambda));
 }
 
 double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
@@ -279,9 +298,9 @@ double scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
             }
         }
         Nmul(X, fnorm(X));
-
-        // TODO cal residual        
-        auto res = cal_res(J, X);
+        
+        auto res = cal_res(J, X, lambda);
+        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is" << res << std::endl;
         if (res < tol) {
             break;
         }
