@@ -1,4 +1,5 @@
-
+// bind core
+// map i,j -> uniform ij
 #include <iostream>
 #include <stdio.h>
 #include <algorithm>
@@ -17,7 +18,7 @@
 #include "mkl_lapacke.h"
 #include "omp.h"
 #include "mkl.h"
-#define NN 1
+#define NN 2
 typedef std::vector<int> vint;
 /* struct */
 struct Tensor {
@@ -78,9 +79,15 @@ double cal_lambda(Tensor *A, Tensor *U) {
         scan_add[ii] = scan_add[ii-1] + shape[ii-1];
     }
 
-    for (int ii = 0; ii < shape[0]; ii++) {
-        int idx_ii = ii * scan[0];
-        for (int jj = 0; jj < shape[1]; jj++) {
+// TODO
+#pragma omp parallel for default(shared) schedule(static, 4) reduction(+:lambda)
+    // for (int ii = 0; ii < shape[0]; ii++) {
+    //     int idx_ii = ii * scan[0];
+    //     for (int jj = 0; jj < shape[1]; jj++) {
+    for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
             int idx_jj = jj * scan[1] + idx_ii;
             for (int kk = 0; kk < shape[2]; kk++) {
                 int idx_kk = kk * scan[2] + idx_jj;
@@ -97,7 +104,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
                 }
             }
         }
-    }
+    //}
     return lambda;
 }
 
@@ -128,11 +135,17 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
         scan_add[ii] = scan_add[ii-1] + shape[ndim-ii];
     }
 
-
-    for (int ii = 0; ii < shape[a_dim0]; ii++) {
-        int idx_ii = ii * scan[a_dim0];
-        int block_idx_ii = ii * shape[a_dim1];
-        for (int jj = 0; jj < shape[a_dim1]; jj++) {
+// TODO
+    // for (int ii = 0; ii < shape[a_dim0]; ii++) {
+    //     int idx_ii = ii * scan[a_dim0];
+    //     int block_idx_ii = ii * shape[a_dim1];
+    //     for (int jj = 0; jj < shape[a_dim1]; jj++) {
+#pragma omp parallel for default(shared) schedule(static, 16)
+    for (int ij = 0; ij < shape[a_dim0] * shape[a_dim1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[a_dim0];
+            int block_idx_ii = ii * shape[a_dim1];
             int idx_jj = jj * scan[a_dim1] + idx_ii;
             int block_idx = block_idx_ii + jj;
             for (int kk = 0; kk < shape[dim[0]]; kk++) {
@@ -150,7 +163,7 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
                 }
             }
         }
-    }
+    //}
 
     return;
 }
@@ -160,7 +173,7 @@ void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     lapack_int lda = n;
     double w[n];
 
-mkl_set_num_threads(NN);
+//mkl_set_num_threads(NN);
 
     auto info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, J->data, lda, w);
     if (info != 0) {
@@ -237,8 +250,9 @@ double cal_res(Tensor *J, Tensor *X, double lambda) {
 }
 
 void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
+//#pragma omp parallel proc_bind(close)
+//omp_set_num_threads(NN);
     auto tt = tnow();
-
     int n = A->ndim;
     vint shape = A->shape;
     int iter = 0;
@@ -275,8 +289,7 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
         // TODO : omp
-omp_set_num_threads(NN);
-#pragma omp parallel for
+// #pragma omp parallel for
         for (int ii = 0; ii < n-1; ii++) {
             for (int jj = ii+1; jj < n; jj++) {
                 Tensor block_J;
@@ -327,7 +340,7 @@ omp_set_num_threads(NN);
 
 
 int main(int argc, char **argv) {
-    vint shapeA = {10,10,10,10,10,10}; 
+    vint shapeA = {16,16,16,16,16,16}; 
     int ndim = shapeA.size();
     Tensor A;
     for (int ii = 0; ii < ndim; ii++) {
