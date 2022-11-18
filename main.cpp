@@ -15,7 +15,9 @@
 /*MKL*/
 #include "mkl_cblas.h"
 #include "mkl_lapacke.h"
-
+#include "omp.h"
+#include "mkl.h"
+#define NN 2
 typedef std::vector<int> vint;
 
 std::map<double *, int> ref_count;
@@ -225,7 +227,8 @@ void svd_solve(Tensor &J, Tensor &eigvec, double &eig) {
     lapack_int lda = n;
     double w[n];
 
-    // mkl omp
+mkl_set_num_threads(NN);
+
     auto info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, J.data, lda, w);
     if (info != 0) {
         std::cout << "Error syev @" << __LINE__ << std::endl;
@@ -236,6 +239,7 @@ void svd_solve(Tensor &J, Tensor &eigvec, double &eig) {
         eig = w[0];
         idx = 0;
     }
+//#pragma omp parallel for
     for (int ii = 0; ii < n; ii++) {
         eigvec.data[ii] = J.data[ii*n+idx];
     }
@@ -267,12 +271,14 @@ double cal_res(Tensor& J, Tensor &X, double lambda) {
     w_inter.data = (double*)std::malloc(sizeof(double)*X.size);
     std::memset(w_inter.data, 0, sizeof(double) * X.size);
     ref_count[w_inter.data] = 1;
+//#pragma omp parallel for
     for (int ii = 0; ii < J.shape[0]; ii++) {
         int idx = ii * J.shape[1];
         for (int jj = ii+1; jj < J.shape[1]; jj++) {
             w_inter.data[ii] += J.data[idx+jj] * X.data[jj];
         }
     }
+//#pragma omp parallel for
     for (int ii = 0; ii < J.shape[0]; ii++) {
         for (int jj = 0; jj < ii; jj++) {
             w_inter.data[ii] += X.data[jj] * J.data[jj*J.shape[0]+ii];
@@ -282,14 +288,16 @@ double cal_res(Tensor& J, Tensor &X, double lambda) {
 // (w_inter)- rho * w
     double rho;
 	// w_inter inner w
+// reduction
     for (int ii = 0; ii < X.size; ii++) {
         rho += w_inter.data[ii] * X.data[ii]; // X -> w
     }
+//#pragma omp parallel for
     for (int ii = 0; ii < X.size; ii++) {
         w_inter.data[ii] -= rho * X.data[ii];
     }
 
-    auto res = fnorm(w_inter)/(fnorm(J)*std::sqrt(2)+std::abs(lambda));
+    auto res = fnorm(w_inter)/(fnorm(J)*std::sqrt(1)+std::abs(lambda));
     return res;
 }
 
@@ -317,7 +325,8 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
     X.shape = {X.size};
     X.data = (double *)std::malloc(sizeof(double) * X.size);
 
-    // {n_j} X concat
+omp_set_num_threads(NN);
+//#pragma omp parallel for
     for (int ii = 0; ii < n; ii++) {
         std::memcpy(X.data + scan_nj[ii],
                     U[ii].data, shape[ii] * sizeof(double));
@@ -329,6 +338,7 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
         // TODO : omp
+#pragma omp parallel for shared(J,shape,A,X,n)
         for (int ii = 0; ii < n-1; ii++) {
             for (int jj = ii+1; jj < n; jj++) {
                 auto block_J = ttvc_except_dim(A, X, ii, jj);
@@ -348,23 +358,24 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
         // update X and lambda
         svd_solve(J, X, lambda);
 
+//#pragma omp parallel for
         for (int ii = 0; ii < n; ii++) {
             Nmul_ptr(X.data+scan_nj[ii], 1/fnorm_ptr(X.data+scan_nj[ii], shape[ii]), shape[ii]);
         }
         iter++;
     }
     // assign U
+//#pragma omp parallel for
     for (int ii = n-1; ii >= 0; ii--) {
         std::memcpy(U[ii].data, X.data + scan_nj[ii],
                     shape[ii] * sizeof(double));
     }
-    //return lambda;
-    return;
+    return ;
 }
 
 
 int main(int argc, char **argv) {
-    vint shapeA = {10,10,10,10,10,10}; 
+    vint shapeA = {8,8,8,8,8,8}; 
     int ndim = shapeA.size();
     Tensor A;
     for (int ii = 0; ii < ndim; ii++) {
@@ -419,6 +430,6 @@ int main(int argc, char **argv) {
         U.push_back(u);
     }
     auto tt = tnow();
-    scf(A, U, 5.0e-4, 50);
+    scf(A, U, 5.0e-4, 200);
     pti(tt);
 }
