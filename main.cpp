@@ -17,7 +17,7 @@
 #include "mkl_lapacke.h"
 #include "omp.h"
 #include "mkl.h"
-#define NN 2
+#define NN 1
 typedef std::vector<int> vint;
 /* struct */
 struct Tensor {
@@ -231,6 +231,7 @@ double cal_res(Tensor *J, Tensor *X, double lambda) {
     }
 
     auto res = fnorm_ptr(w_inter.data, w_inter.size)/(fnorm_ptr(J->data, J->size)*std::sqrt(2)+std::abs(lambda));
+    #pragma omp barrier
     std::free(w_inter.data);
     return res;
 }
@@ -262,7 +263,7 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
 
     for (int ii = 0; ii < n; ii++) {
         std::memcpy(X.data + scan_nj[ii],
-                    U[ii].data, shape[ii] * sizeof(double));
+                    U[ii].data, shape[n-1-ii] * sizeof(double));
     }
 
     pti(tt, "initialize");
@@ -275,7 +276,7 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
         // TODO : omp
 omp_set_num_threads(NN);
-#pragma omp parallel for shared(J,shape,A,X,n) 
+#pragma omp parallel for
         for (int ii = 0; ii < n-1; ii++) {
             for (int jj = ii+1; jj < n; jj++) {
                 Tensor block_J;
@@ -312,11 +313,12 @@ omp_set_num_threads(NN);
         pti(tt, "normal X");
         iter++;
     }
-    // assign U
-#pragma omp parallel for shared(U, X, scan_nj, shape)
+//     // assign U
+
+#pragma omp parallel for
     for (int ii = n-1; ii >= 0; ii--) {
         std::memcpy(U[ii].data, X.data + scan_nj[ii],
-                    shape[ii] * sizeof(double));
+                    shape[n-1-ii] * sizeof(double));
     }
     std::free(J.data);
     std::free(X.data);
@@ -325,7 +327,7 @@ omp_set_num_threads(NN);
 
 
 int main(int argc, char **argv) {
-    vint shapeA = {12,12,12,12,12,12}; 
+    vint shapeA = {10,10,10,10,10,10}; 
     int ndim = shapeA.size();
     Tensor A;
     for (int ii = 0; ii < ndim; ii++) {
