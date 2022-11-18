@@ -262,30 +262,40 @@ double cal_res(Tensor& J, Tensor &X, double lambda) {
     w_inter.data = (double*)std::malloc(sizeof(double)*X.size);
     std::memset(w_inter.data, 0, sizeof(double) * X.size);
     ref_count[w_inter.data] = 1;
+	// J 
+	// 0 2
+	// 0 0
+	// j @ w
     for (int ii = 0; ii < J.shape[0]; ii++) {
         int idx = ii * J.shape[1];
         for (int jj = ii+1; jj < J.shape[1]; jj++) {
             w_inter.data[ii] += J.data[idx+jj] * X.data[jj];
         }
     }
+	// J
+	// 0 2
+	// 2 0
+	// j@w
     for (int ii = 0; ii < J.shape[0]; ii++) {
         for (int jj = 0; jj < ii; jj++) {
             w_inter.data[ii] += X.data[jj] * J.data[jj*J.shape[0]+ii];
         }
     }
-
+// X.T J X
+// (w_inter)- rho * w
     double rho;
+	// w_inter inner w
     for (int ii = 0; ii < X.size; ii++) {
-        rho += w_inter.data[ii] * X.data[ii];
+        rho += w_inter.data[ii] * X.data[ii]; // X -> w
     }
-    std::cout << "rho = " << rho<<std::endl;
+    //std::cout << "rho = " << rho<<std::endl;
     for (int ii = 0; ii < X.size; ii++) {
         w_inter.data[ii] -= rho * X.data[ii];
     }
-    std::cout << "fnorm winter = " << fnorm(w_inter) <<std::endl;
-    std::cout << "fnorm J = " << fnorm(J) * std::sqrt(2) <<std::endl;
-    std::cout << "lambda = " << std::abs(lambda) << std::endl;
-    std::cout << lambda << std::endl;
+    // std::cout << "fnorm winter = " << fnorm(w_inter) <<std::endl;
+    // std::cout << "fnorm J = " << fnorm(J) * std::sqrt(2) <<std::endl;
+    // std::cout << "lambda = " << std::abs(lambda) << std::endl;
+    // std::cout << lambda << std::endl;
     auto res = fnorm(w_inter)/(fnorm(J)*std::sqrt(2)+std::abs(lambda));
     return res;
 }
@@ -313,6 +323,8 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
     X.ndim = 1;
     X.shape = {X.size};
     X.data = (double *)std::malloc(sizeof(double) * X.size);
+
+    // {n_j} X concat
     for (int ii = 0; ii < n; ii++) {
         std::memcpy(X.data + scan_nj[ii],
                     U[ii].data, shape[ii] * sizeof(double));
@@ -324,28 +336,29 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
     // }
     // std::cout << std::endl;
     // std::cout << "start cal lambda" << std::endl;
-    auto lambda = cal_lambda(A, X);
-    // std::cout << lambda << std::endl;
+    double lambda = cal_lambda(A, X);;
+    std::cout << lambda << std::endl;
 
     while (iter < max_iter) {
         // update J
         std::memset(J.data, 0, sizeof(double) * J.size);
         // TODO : omp
-        for (int ii = 0; ii < n - 1; ii++) {
-            for (int jj = ii + 1; jj < n; jj++) {
+        for (int ii = 0; ii < n; ii++) {
+            for (int jj = 0; jj < ii; jj++) {
                 auto block_J = ttvc_except_dim(A, X, ii, jj);
                 // std::cout << "block_J" << std::endl;
                 // for (int ii = 0; ii < block_J.size; ii++) {
                 //    std::cout << block_J.data[ii] << " ";
                 // }
                 // std::cout << std::endl;
-                Nmul(block_J, 1/((double)n-1));
-                // std::cout << "cmp block_J" << std::endl;
-                // for (int ii = 0; ii < block_J.size; ii++) {
-                //    std::cout << block_J.data[ii] << " ";
-                // }
-                // std::cout << std::endl;
-                fill_J_with_block(J, shape, ii, jj, block_J);
+                Nmul(block_J, 1/((double)n-1)); // block / 5
+                std::cout << "cmp block_J " << "ii = " << ii << " jj = " << jj << std::endl;
+                for (int ii = 0; ii < block_J.size; ii++) {
+                   std::cout << block_J.data[ii] << " ";
+                }
+                std::cout << std::endl;
+
+                fill_J_with_block(J, shape, n-1-ii, n-1-jj, block_J);
             }
         }
         for (int ii = 0; ii < J.shape[0]; ii++) {
@@ -355,6 +368,7 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
             std::cout << std::endl;
         }
         
+        Nmul(X, 1/ fnorm(X));
         auto res = cal_res(J, X, lambda);
         std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
         if (res < tol) {
@@ -363,19 +377,19 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
 
         // update X and lambda
         svd_solve(J, X, lambda);
-        for (int ii = 0; ii < A.ndim; ii++) {
-            std::cout << 1/fnorm_ptr(X.data+scan_nj[ii], A.shape[ii]) << std::endl;
-            Nmul_ptr(X.data+scan_nj[ii], 1/fnorm_ptr(X.data+scan_nj[ii], A.shape[ii]), A.shape[ii]);
+
+        for (int ii = 0; ii < n; ii++) {
+            Nmul_ptr(X.data+scan_nj[ii], 1/fnorm_ptr(X.data+scan_nj[ii], shape[ii]), shape[ii]);
         }
-        std::cout << lambda << std::endl;
-        for (int ii = 0; ii < n_j; ii++) {
-            std::cout << X.data[ii] << ", ";
-        }
-        std::cout << std::endl;
+        // std::cout << lambda << std::endl;
+        // for (int ii = 0; ii < n_j; ii++) {
+        //    std::cout << X.data[ii] << ", ";
+        // }
+        // std::cout << std::endl;
         iter++;
     }
     // assign U
-    for (int ii = 0; ii < n; ii++) {
+    for (int ii = n-1; ii >= 0; ii--) {
         std::memcpy(U[ii].data, X.data + scan_nj[ii],
                     shape[ii] * sizeof(double));
     }
@@ -385,7 +399,7 @@ void scf(Tensor &A, std::vector<Tensor> &U, double tol, int max_iter) {
 
 
 int main(int argc, char **argv) {
-    vint shapeA = {2,2,2,2,2,2};
+    vint shapeA = {2,2,2,2,2,2}; // ndim = 6 //30 30 30 30 30 30
     int ndim = shapeA.size();
     Tensor A;
     for (int ii = 0; ii < ndim; ii++) {
@@ -418,6 +432,7 @@ int main(int argc, char **argv) {
                         int idx_uu = uu * scan[4] + idx_ll;
                         for (int tt = 0; tt < shapeA[5]; tt++) {
                             A.data[idx_uu + tt] = a_val[idx_uu+tt];
+                            // A.data[idx_uu+tt] = randn();
                             //std::cout << "idx = " << idx_uu << ", value = "
                             //std::cout << A.data[idx_uu+tt] << ", " ;
                         }
@@ -427,7 +442,7 @@ int main(int argc, char **argv) {
         }
     }
     //std::cout << std::endl;
-    
+  
     std::vector<Tensor> U;
     for(int ii = 0; ii < ndim; ii++) {
         Tensor u;
