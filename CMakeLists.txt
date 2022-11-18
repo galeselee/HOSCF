@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.9)
 project(rank-one)
 
-set(SOURCE rank-one.cpp)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+set(SOURCE main.cpp)
+SET(CMAKE_BUILD_TYPE "Debug")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
 set(cxx17 "-std=c++17")
 
 add_executable(rank-one ${SOURCE})
