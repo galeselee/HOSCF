@@ -295,10 +295,10 @@ omp_set_num_threads(NN);
         pti(tt, "cal_res");
         
 
-        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-        if (res < tol) {
-            break;
-        }
+        // std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
+        // if (res < tol) {
+        //     break;
+        // }
 
         tt = tnow();
         // update X and lambda
