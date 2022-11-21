@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 project(rank-one)
 
-set(SOURCE scf_5_dim.cpp)
+set(SOURCE scf_4_dim.cpp)
 SET(CMAKE_BUILD_TYPE "Relese")
 #SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -Ofast -Wall -g2 -ggdb")
 SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall")

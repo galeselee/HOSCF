@@ -33,9 +33,11 @@ std::chrono::system_clock::time_point tnow() {
     return std::chrono::system_clock::now();
 }
 
-int first_iter = 0;
-int first_ttvc = 0;
+int first_iter=0;
+int first_ttvc=0;
 int ttvc_time = 0;
+int svd_time=0;
+int init_time=0;
 void pti(std::chrono::system_clock::time_point time, std::string info="", int iter=-1) {
     auto now_ = tnow();
     auto time_span = std::chrono::duration_cast<std::chrono::milliseconds >(now_ - time);
@@ -48,12 +50,19 @@ void pti(std::chrono::system_clock::time_point time, std::string info="", int it
 			ttvc_time += pt;
 		}
 	}
+	if (info == "svd") {
+		if (iter != 0) {
+			svd_time += pt;
+		}
+	}
 	if (info == "first_iter" && iter == 0) {
 		first_iter = pt;
 	}
-	if (info == "total time") {
-		std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
+	if (info == "init") {
+	init_time=pt;
 	}
+	if (info=="total time")
+		std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
 } 
 
 
@@ -83,15 +92,16 @@ void Nmul_ptr(double *ptr, double num, int size) {
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
+	int ndim = shape.size();
     double lambda = 0;
-    int scan[6];
-    scan[5] = 1;
-    for (int ii = 4; ii >= 0; ii--) {
+    int scan[ndim];
+    scan[ndim-1] = 1;
+    for (int ii = ndim-2; ii >= 0; ii--) {
         scan[ii] = scan[ii+1] * shape[ii+1];
     }
-    int scan_add[6];
+    int scan_add[ndim];
     scan_add[0] = 0;
-    for (int ii = 1; ii < 6; ii++) {
+    for (int ii = 1; ii < ndim; ii++) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
 
@@ -104,15 +114,9 @@ double cal_lambda(Tensor *A, Tensor *U) {
             for (int kk = 0; kk < shape[2]; kk++) {
                 int idx_kk = kk * scan[2] + idx_jj;
                 for (int ll = 0; ll < shape[3]; ll++) {
-                    int idx_ll = ll * scan[3] + idx_kk;
-                    for (int uu = 0; uu < shape[4]; uu++) {
-                        int idx_uu = uu * scan[4] + idx_ll;
-                        for (int tt = 0; tt < shape[5]; tt++) {
-                            lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
-                                      * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
-                                      * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
-                        }
-                    }
+						lambda += A->data[idx_kk + ll]
+								  * U->data[scan_add[0]+ll] * U->data[scan_add[1]+kk]
+								  * U->data[scan_add[2]+jj] * U->data[scan_add[3]+ii];
                 }
             }
         }
@@ -129,20 +133,20 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
     block_J->shape = {A->shape[a_dim0] * A->shape[a_dim1]};
     block_J->data = (double*)std::malloc(sizeof(double) * block_J->size);
     std::memset(block_J->data, 0, sizeof(double) * block_J->size);
-    int dim[4];
+    int dim[ndim-2];
     int cnt = 0;
     for (int ii = 0; ii < A->ndim; ii++) {
         if (ii == a_dim0 || ii == a_dim1) continue;
         dim[cnt++] = ii;
     }
-    int scan[6];
-    scan[5] = 1;
-    for (int ii = 4; ii >= 0; ii--) {
+    int scan[ndim];
+    scan[ndim-1] = 1;
+    for (int ii = ndim-2; ii >= 0; ii--) {
         scan[ii] = scan[ii+1] * shape[ii+1];
     }
-    int scan_add[6];
+    int scan_add[ndim];
     scan_add[0]=0;
-    for (int ii = 1; ii < 6; ii++) {
+    for (int ii = 1; ii < ndim; ii++) {
         scan_add[ii] = scan_add[ii-1] + shape[ndim-ii];
     }
 
@@ -157,15 +161,9 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
             for (int kk = 0; kk < shape[dim[0]]; kk++) {
                 int idx_kk = kk * scan[dim[0]] + idx_jj;
                 for (int ll = 0; ll < shape[dim[1]]; ll++) {
-                    int idx_ll = ll * scan[dim[1]] + idx_kk;
-                    for (int uu = 0; uu < shape[dim[2]]; uu++) {
-                        int idx_uu = uu * scan[dim[2]] + idx_ll;
-                        for (int tt = 0; tt < shape[dim[3]]; tt++) {
-                            block_J->data[block_idx] += 
-                                A->data[idx_uu + tt*scan[dim[3]]] * U->data[scan_add[ndim-1-dim[3]]+tt] * U->data[scan_add[ndim-1-dim[2]]+uu]
-                                * U->data[scan_add[ndim-1-dim[1]]+ll] * U->data[scan_add[ndim-1-dim[0]]+kk];
-                        }
-                    }
+						block_J->data[block_idx] += 
+							A->data[idx_kk + ll*scan[dim[1]]]
+							* U->data[scan_add[ndim-1-dim[1]]+ll] * U->data[scan_add[ndim-1-dim[0]]+kk];
                 }
             }
         }
@@ -250,11 +248,12 @@ double cal_res(Tensor *J, Tensor *X, double lambda) {
 }
 
 void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
+	auto init_tt = tnow();
     int n = A->ndim;
     vint shape = A->shape;
     int iter = 0;
     int n_j = 0;
-    int scan_nj[7];
+    int scan_nj[n+1];
     scan_nj[0] = 0;
     for (int ii = 0; ii < n; ii++) {
         n_j += U[ii].size;
@@ -278,8 +277,9 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
     }
 
     double lambda = cal_lambda(A, &X);
+	pti(init_tt,"init");
     while (iter < max_iter) {
-		auto first_iter_tt = tnow();
+		auto first_iter_tt=tnow();
         auto tt = tnow();
         std::memset(J.data, 0, sizeof(double) * J.size);
         for (int ii = 0; ii < n-1; ii++) {
@@ -296,13 +296,16 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
         Nmul_ptr(X.data, 1/ fnorm_ptr(X.data, X.size), X.size);
         auto res = cal_res(&J, &X, lambda);
         
-        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-        // if (res < tol) {
-        //     break;
-        // }
+        //std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
+        //if (res < tol) {
+        //    break;
+        //}
 
         // update X and lambda
+
+		tt = tnow();
         svd_solve(&J, &X, lambda);
+		pti(tt, "svd", iter);
 
 #pragma omp parallel for default(shared)
         for (int ii = 0; ii < n; ii++) {
@@ -334,7 +337,7 @@ int main(int argc, char **argv) {
 		mkl_set_num_threads(std::stoi(argv[1]));
 	}
 
-    vint shapeA = {32, 32, 32, 32, 32 ,32}; 
+    vint shapeA = {32, 32, 32, 32}; 
 
     int ndim = shapeA.size();
     Tensor A;
@@ -348,9 +351,9 @@ int main(int argc, char **argv) {
     A.data = (double *)std::malloc(sizeof(double) * A.size);
 
 
-    int scan[6];
-    scan[5] = 1;
-    for (int ii = 4; ii >= 0; ii--) {
+    int scan[ndim];
+    scan[ndim-1] = 1;
+    for (int ii = ndim-2; ii >= 0; ii--) {
         scan[ii] = scan[ii+1] * shapeA[ii+1];
     }
    
@@ -361,19 +364,13 @@ int main(int argc, char **argv) {
             for (int kk = 0; kk < shapeA[2]; kk++) {
                 int idx_kk = kk * scan[2] + idx_jj;
                 for (int ll = 0; ll < shapeA[3]; ll++) {
-                    int idx_ll = ll * scan[3] + idx_kk;
-                    for (int uu = 0; uu < shapeA[4]; uu++) {
-                        int idx_uu = uu * scan[4] + idx_ll;
-                        for (int tt = 0; tt < shapeA[5]; tt++) {
-                            A.data[idx_uu + tt] = randn();
-                        }
-                    }
+						A.data[idx_kk + ll] = randn();
                 }
             }
         }
     }
   
-    Tensor U[6];
+    Tensor U[ndim];
     for(int ii = 0; ii < ndim; ii++) {
         U[ii].ndim = 1;
         U[ii].size = shapeA[ndim-1-ii];
@@ -387,10 +384,12 @@ int main(int argc, char **argv) {
     }
 
 	auto tt = tnow();
-    scf(&A, U, 5.0e-4, 11);
+    scf(&A, U, 5.0e-4, 10);
 	pti(tt, "total time");
-	std::cout << "ttvc ten iter time = " << std::to_string(ttvc_time) << " ms" << std::endl;
-	std::cout << "first iter time = " << std::to_string(first_iter) << " ms" << std::endl;
+	std::cout << "ttvc time/ms = "<<std::to_string(ttvc_time)<<std::endl;
+	std::cout << "svd time/ms = "<<std::to_string(svd_time)<<std::endl;
+	std::cout << "init time/ms = "<<std::to_string(init_time)<<std::endl;
+	std::cout << "first iter time/ms = "<<std::to_string(first_iter)<<std::endl;
     std::free(A.data);
     for (int ii = 0; ii < ndim; ii++) {
         std::free(U[ii].data);

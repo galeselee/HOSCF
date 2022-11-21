@@ -33,11 +33,27 @@ std::chrono::system_clock::time_point tnow() {
     return std::chrono::system_clock::now();
 }
 
-void pti(std::chrono::system_clock::time_point time, std::string info="") {
+int first_iter=0;
+int first_ttvc=0;
+int ttvc_time = 0;
+void pti(std::chrono::system_clock::time_point time, std::string info="", int iter=-1) {
     auto now_ = tnow();
     auto time_span = std::chrono::duration_cast<std::chrono::milliseconds >(now_ - time);
     auto pt = time_span.count();
-    std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
+	if (info == "ttvc") {
+		if (iter == 0) {
+			first_ttvc = pt;
+		}
+		else {
+			ttvc_time += pt;
+		}
+	}
+	if (info == "first_iter" && iter == 0) {
+		first_iter = pt;
+	}
+	if (info == "total time") {
+		std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
+	}
 } 
 
 
@@ -229,7 +245,6 @@ double cal_res(Tensor *J, Tensor *X, double lambda) {
 }
 
 void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
-    auto tt = tnow();
     int n = A->ndim;
     vint shape = A->shape;
     int iter = 0;
@@ -258,10 +273,9 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
     }
 
     double lambda = cal_lambda(A, &X);
-    //pti(tt, "init");
-	//
     while (iter < max_iter) {
-        tt = tnow();
+		auto first_iter_tt=tnow();
+        auto tt = tnow();
         std::memset(J.data, 0, sizeof(double) * J.size);
         for (int ii = 0; ii < n-1; ii++) {
             for (int jj = ii+1; jj < n; jj++) {
@@ -272,29 +286,24 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
                 std::free(block_J.data);
             }
         }
-        //pti(tt, "ttvc_except_dim");
+        pti(tt, "ttvc", iter);
 
-        //tt = tnow();
         Nmul_ptr(X.data, 1/ fnorm_ptr(X.data, X.size), X.size);
         auto res = cal_res(&J, &X, lambda);
-        //pti(tt, "cal_res");
         
         std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-        if (res < tol) {
-            break;
-        }
+        //if (res < tol) {
+        //    break;
+        //}
 
-        //tt = tnow();
         // update X and lambda
         svd_solve(&J, &X, lambda);
-        //pti(tt, "svd");
 
-        //tt = tnow();
 #pragma omp parallel for default(shared)
         for (int ii = 0; ii < n; ii++) {
             Nmul_ptr(X.data+scan_nj[ii], 1/fnorm_ptr(X.data+scan_nj[ii], U[ii].size), U[ii].size);
         }
-        //pti(tt, "normal X");
+		pti(first_iter_tt, "first_iter", iter);
         iter++;
     }
 
@@ -320,7 +329,7 @@ int main(int argc, char **argv) {
 		mkl_set_num_threads(std::stoi(argv[1]));
 	}
 
-    vint shapeA = {16, 16, 16, 16, 16}; 
+    vint shapeA = {32, 32, 32, 32, 32}; 
 
     int ndim = shapeA.size();
     Tensor A;
@@ -372,6 +381,8 @@ int main(int argc, char **argv) {
 	auto tt = tnow();
     scf(&A, U, 5.0e-4, 10);
 	pti(tt, "total time");
+	std::cout << "ttvc time/ms = "<<std::to_string(ttvc_time)<<std::endl;
+	std::cout << "first iter time/ms = "<<std::to_string(first_iter)<<std::endl;
     std::free(A.data);
     for (int ii = 0; ii < ndim; ii++) {
         std::free(U[ii].data);
