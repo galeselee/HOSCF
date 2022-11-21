@@ -79,7 +79,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
 
-#pragma omp parallel for default(shared) schedule(static, 16) reduction(+:lambda)
+#pragma omp parallel for default(shared) reduction(+:lambda)
     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
             int ii = ij / shape[1];
             int jj = ij % shape[1];
@@ -130,7 +130,7 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
         scan_add[ii] = scan_add[ii-1] + shape[ndim-ii];
     }
 
-#pragma omp parallel for default(shared) schedule(static, 8)
+#pragma omp parallel for default(shared)
     for (int ij = 0; ij < shape[a_dim0] * shape[a_dim1]; ij++) {
             int ii = ij / shape[a_dim1];
             int jj = ij % shape[a_dim1];

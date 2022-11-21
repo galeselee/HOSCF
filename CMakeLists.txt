@@ -3,7 +3,7 @@ project(rank-one)
 
 set(SOURCE main.cpp)
 SET(CMAKE_BUILD_TYPE "Relese")
-#SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
+#SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -Ofast -Wall -g2 -ggdb")
 SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Ofast -Wall")
 set(cxx17 "-std=c++17")
