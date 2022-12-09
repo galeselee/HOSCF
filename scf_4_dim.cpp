@@ -38,6 +38,7 @@ int first_ttvc=0;
 int ttvc_time = 0;
 int svd_time=0;
 int init_time=0;
+int total_time=0;
 void pti(std::chrono::system_clock::time_point time, std::string info="", int iter=-1) {
     auto now_ = tnow();
     auto time_span = std::chrono::duration_cast<std::chrono::milliseconds >(now_ - time);
@@ -61,8 +62,11 @@ void pti(std::chrono::system_clock::time_point time, std::string info="", int it
 	if (info == "init") {
 	init_time=pt;
 	}
-	if (info=="total time")
+
+	if (info=="total time") {
 		std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
+		total_time = pt;
+		}
 } 
 
 
@@ -296,10 +300,10 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
         Nmul_ptr(X.data, 1/ fnorm_ptr(X.data, X.size), X.size);
         auto res = cal_res(&J, &X, lambda);
         
-        //std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-        //if (res < tol) {
-        //    break;
-        //}
+        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
+        if (res < tol) {
+            break;
+        }
 
         // update X and lambda
 
@@ -337,7 +341,7 @@ int main(int argc, char **argv) {
 		mkl_set_num_threads(std::stoi(argv[1]));
 	}
 
-    vint shapeA = {32, 32, 32, 32}; 
+    vint shapeA = {64,64,64,64}; 
 
     int ndim = shapeA.size();
     Tensor A;
@@ -390,6 +394,7 @@ int main(int argc, char **argv) {
 	std::cout << "svd time/ms = "<<std::to_string(svd_time)<<std::endl;
 	std::cout << "init time/ms = "<<std::to_string(init_time)<<std::endl;
 	std::cout << "first iter time/ms = "<<std::to_string(first_iter)<<std::endl;
+	std::cout << "you need = " << total_time - first_iter << std::endl;
     std::free(A.data);
     for (int ii = 0; ii < ndim; ii++) {
         std::free(U[ii].data);

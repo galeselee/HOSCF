@@ -329,9 +329,10 @@ int main(int argc, char **argv) {
 	else {
 		omp_set_num_threads(std::stoi(argv[1]));
 		mkl_set_num_threads(std::stoi(argv[1]));
+		std::cout << std::stoi(argv[1])<<std::endl;;
 	}
 
-    vint shapeA = {32, 32, 32, 32}; 
+    vint shapeA = {256,256,256}; 
 
     int ndim = shapeA.size();
     Tensor A;

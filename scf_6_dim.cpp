@@ -36,6 +36,7 @@ std::chrono::system_clock::time_point tnow() {
 int first_iter = 0;
 int first_ttvc = 0;
 int ttvc_time = 0;
+int svd_time = 0;
 void pti(std::chrono::system_clock::time_point time, std::string info="", int iter=-1) {
     auto now_ = tnow();
     auto time_span = std::chrono::duration_cast<std::chrono::milliseconds >(now_ - time);
@@ -48,10 +49,16 @@ void pti(std::chrono::system_clock::time_point time, std::string info="", int it
 			ttvc_time += pt;
 		}
 	}
+	if (info == "svd") {
+			svd_time += pt;
+	}
 	if (info == "first_iter" && iter == 0) {
 		first_iter = pt;
 	}
 	if (info == "total time") {
+		std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
+	}
+	if (info == "svd") {
 		std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
 	}
 } 
@@ -302,7 +309,9 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
         // }
 
         // update X and lambda
+		tt = tnow();
         svd_solve(&J, &X, lambda);
+		pti(tt,"svd",iter);
 
 #pragma omp parallel for default(shared)
         for (int ii = 0; ii < n; ii++) {
@@ -334,7 +343,7 @@ int main(int argc, char **argv) {
 		mkl_set_num_threads(std::stoi(argv[1]));
 	}
 
-    vint shapeA = {32, 32, 32, 32, 32 ,32}; 
+    vint shapeA = {16,16,16,16,16,16}; 
 
     int ndim = shapeA.size();
     Tensor A;
