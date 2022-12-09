@@ -14,10 +14,12 @@
 
 
 /*MKL*/
-#include "mkl_cblas.h"
-#include "mkl_lapacke.h"
+//#include "mkl_cblas.h"
+//#include "mkl_lapacke.h"
+#include "cblas.h"
+#include "lapacke.h"
 #include "omp.h"
-#include "mkl.h"
+//#include "mkl.h"
 #define NN 2
 typedef std::vector<int> vint;
 /* struct */
