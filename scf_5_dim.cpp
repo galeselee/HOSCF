@@ -13,11 +13,6 @@
 #include <map>
 
 
-/*MKL*/
-//#include "mkl_cblas.h"
-//#include "mkl_lapacke.h"
-#include "cblas.h"
-#include "lapacke.h"
 #include "omp.h"
 //#include "mkl.h"
 #define NN 2
@@ -178,12 +173,21 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
     return;
 }
 
-void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
-    lapack_int n = J->shape[0];
-    lapack_int lda = n;
-    double w[n];
+extern "C" {
+	void dsyev_(const char*, const char*, const  int *, double* ,const int *, double *, double *, const int*, int *);
+}
 
-    auto info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', n, J->data, lda, w);
+void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
+    int n = J->shape[0];
+    int lda = n;
+    double w[n];
+    char V='V';
+    char U='L';
+    int lwork = 3*n;
+    double work[lwork];
+    int info;
+
+    dsyev_(&V, &U, &n, J->data, &lda, w, work, &lwork, &info);
     if (info != 0) {
         std::cout << "Error syev @" << __LINE__ << std::endl;
     }
@@ -193,10 +197,12 @@ void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
         eig = w[0];
         idx = 0;
     }
-#pragma omp parallel for default(shared)
-    for (int ii = 0; ii < n; ii++) {
-        eigvec->data[ii] = J->data[ii*n+idx];
-    }
+
+    memcpy(eigvec->data, &(J->data[idx*n]), 8*n);
+//#pragma omp parallel for default(shared)
+//    for (int ii = 0; ii < n; ii++) {
+//        eigvec->data[ii] = J->data[ii*n+idx];
+//    }
     return ;
 }
 
