@@ -305,9 +305,9 @@ void scf(Tensor *A, Tensor *U, double tol, int max_iter) {
         auto res = cal_res(&J, &X, lambda);
         
 	//std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-       if (res < tol) {
-            break;
-        }
+       //if (res < tol) {
+       //     break;
+       // }
 
         // update X and lambda
 
@@ -390,7 +390,7 @@ int main(int argc, char **argv) {
     }
 
 	auto tt = tnow();
-    scf(&A, U, 5.0e-4, 10);
+    scf(&A, U, 5.0e-4, 50);
 	pti(tt, "total time");
 	std::cout << "ttvc time/ms = "<<std::to_string(ttvc_time)<<std::endl;
 	std::cout << "svd time/ms = "<<std::to_string(svd_time)<<std::endl;

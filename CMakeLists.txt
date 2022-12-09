@@ -28,8 +28,4 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
 
-#include_directories("/share/userfile/zeyuli/BASE/mkl/2022.2.1/include/")
-#target_link_directories(${PROJECT_NAME} PUBLIC "/share/userfile/zeyuli/BASE/mkl/2022.2.1/lib/intel64/")
-#target_link_libraries(${PROJECT_NAME} PUBLIC mkl_intel_lp64 mkl_gnu_thread mkl_core pthread m dl gomp)
-
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LAPACKLINKER_FLAGS}")
