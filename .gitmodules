@@ -1,0 +1,3 @@
+[submodule "ttvc/lib/googletest"]
+	path = ttvc/lib/googletest
+	url = git@github.com:Galeselee/googletest
