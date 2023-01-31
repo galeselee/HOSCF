@@ -51,8 +51,11 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
     int index2 = Ui_index[ndim-1-dim[2]];
     int index3 = Ui_index[ndim-1-dim[3]];
 
-#pragma omp parallel for default(shared)
+    omp_set_num_threads(threads);
+
+//#pragma omp parallel for default(shared)
     for (int ij = 0; ij < outer_loop; ij++) {
+    std::cout << ij << std::endl;
         int ii = ij / shape[a_dim1];
         int jj = ij % shape[a_dim1];
         int idx_ii = ii * A_stride[a_dim0];
@@ -75,7 +78,9 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
                 }
             }
         }
+    break;
     }
 
+    std::cout << "b" << std::endl;
     return;
 }

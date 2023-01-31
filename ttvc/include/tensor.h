@@ -15,6 +15,7 @@ public:
     Tensor(vint shape_in);
     ~Tensor();
     void constructor(vint shape_in);
+    void norm();
 };
 
 #endif

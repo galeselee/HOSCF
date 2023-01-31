@@ -1,4 +1,6 @@
 #include <cstring>
+#include <cmath>
+#include <algorithm>
 
 #include "tensor.h"
 
@@ -30,4 +32,15 @@ void Tensor::constructor(vint shape_in) {
         size *= shape[ii];
     data = reinterpret_cast<double *>(malloc(sizeof(double) * size));
     std::memset(data, 0, sizeof(double) * size);
+}
+
+void Tensor::norm() {
+    double sum = 0;
+    for (int ii = 0; ii < size; ii++) {
+        sum += data[ii] * data[ii];
+    }
+    sum = std::sqrt(sum);
+    for (int ii = 0; ii < size; ii++) {
+        data[ii] /= sum;
+    }
 }
