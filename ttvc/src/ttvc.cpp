@@ -59,14 +59,14 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
         int idx_jj = jj * A_stride[a_dim1] + idx_ii;
         int block_idx = ii * shape[a_dim1] + jj;
         for (int kk = 0; kk < loop_index0; kk++) {
-            int idx_kk = kk * shride0 + idx_jj;
+            int idx_kk = kk * stride0 + idx_jj;
             for (int ll = 0; ll < loop_index1; ll++) {
-                int idx_ll = ll * shride1 + idx_kk;
+                int idx_ll = ll * stride1 + idx_kk;
                 for (int uu = 0; uu < loop_index2; uu++) {
-                    int idx_uu = uu * shride2 + idx_ll;
+                    int idx_uu = uu * stride2 + idx_ll;
                     for (int tt = 0; tt < loop_index3; tt++) {
                         block_J->data[block_idx] += 
-                            A->data[idx_uu + tt * shride3] * 
+                            A->data[idx_uu + tt * stride3] * 
                             U->data[Ui_index[index3]+tt] * 
                             U->data[Ui_index[index2]+uu] * 
                             U->data[Ui_index[index1]+ll] * 

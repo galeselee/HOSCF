@@ -1,7 +1,13 @@
 #include <iostream>
+
 #include "tensor.h"
 #include "ttvc.h"
+#include "utils.h"
 
 int main() {
-    std::cout << "1" << std::endl;
+    vint A_shape{16,16,16,16,16,16}; 
+    Tensor A(A_shape);
+
+
+
 }

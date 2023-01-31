@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "tensor.h"
 
 Tensor::Tensor() {
@@ -12,6 +14,12 @@ Tensor::Tensor(vint shape_in) {
         size *= shape[ii];
     data = reinterpret_cast<double *>(malloc(sizeof(double) * size));
     std::memset(data, 0, sizeof(double) * size);
+}
+
+Tensor::~Tensor() {
+    if (data != nullptr) {
+        free(data);
+    }
 }
 
 void Tensor::constructor(vint shape_in) {

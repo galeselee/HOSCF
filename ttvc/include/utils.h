@@ -5,4 +5,6 @@
 
 typedef std::vector<int> vint;
 
+double randn();
+
 #endif

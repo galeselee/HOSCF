@@ -13,6 +13,7 @@ public:
     double *data;
     Tensor();
     Tensor(vint shape_in);
+    ~Tensor();
     void constructor(vint shape_in);
 };
 

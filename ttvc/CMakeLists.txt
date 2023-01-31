@@ -10,3 +10,5 @@ add_subdirectory(test)
 
 file(GLOB SRC main.cpp)
 add_executable(run ${SRC})
+
+target_link_libraries(run src_lib)
