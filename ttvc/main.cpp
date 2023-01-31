@@ -37,6 +37,6 @@ int main(int argc, char **argv) {
     }
 
     Tensor ret;
-    ttvc_except_dim(&A, U, &ret, 0, 1);
+    ttvc_except_dim(&A, &X, &ret, 0, 1);
 
 }
