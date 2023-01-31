@@ -37,10 +37,10 @@ void Tensor::constructor(vint shape_in) {
 void Tensor::norm() {
     double sum = 0;
     for (int ii = 0; ii < size; ii++) {
-        sum += data[ii] * data[ii];
+        sum += this->data[ii] * this->data[ii];
     }
     sum = std::sqrt(sum);
     for (int ii = 0; ii < size; ii++) {
-        data[ii] /= sum;
+        this->data[ii] /= sum;
     }
 }
