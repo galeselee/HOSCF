@@ -12,7 +12,7 @@ public:
     int ndim;
     double *data;
     Tensor();
-    Tensor(vint shape_in);
+    void constructor(vint shape_in);
 };
 
 #endif
