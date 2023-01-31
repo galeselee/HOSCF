@@ -1,5 +1,4 @@
 #include <iostream>
-#include <execution>
 #include <cstring>
 
 #include "tensor.h"
@@ -14,7 +13,7 @@ int main(int argc, char **argv) {
         threads = std::stoi(argv[1]);
     }
 
-    vint A_shape{16,16,16,16,16,16}; 
+    vint A_shape{24,24,24,24,24,24}; 
     Tensor A(A_shape);
     int ndim = A.ndim;
 
@@ -29,7 +28,11 @@ int main(int argc, char **argv) {
         U[ii].norm();
     }
 
-    Tensor X({std::reduce(A_shape.begin(), A_shape.end())});
+	int sum_shape = 0;
+	for (int ii = 0; ii < A_shape.size(); ii++)
+		sum_shape += A_shape[ii];
+
+    Tensor X({sum_shape});
     {
         int fill_size = 0;
         for (int ii = 0; ii < 6; ii++) {
