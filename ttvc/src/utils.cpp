@@ -1,5 +1,7 @@
 #include <cmath>
+#include <chrono>
 #include <algorithm>
+
 #include "utils.h"
 
 double randn() {

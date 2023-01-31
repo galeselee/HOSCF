@@ -5,6 +5,7 @@
 #include "tensor.h"
 #include "ttvc.h"
 #include "utils.h"
+#include "common.h"
 
 int threads = 1;
 
@@ -37,6 +38,8 @@ int main(int argc, char **argv) {
     }
 
     Tensor ret;
-    ttvc_except_dim(&A, &X, &ret, 0, 1);
+    std::function<void(Tensor *, Tensor *, Tensor *, int, int)> func = 
+        ttvc_except_dim;
+    timefunc(func, &A, &X, &ret, 0, 1);
 
 }

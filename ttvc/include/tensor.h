@@ -2,6 +2,7 @@
 #define __INCLUDE_TENSOR_H__
 
 #include <string>
+#include <cstring>
 
 #include "utils.h"
 
