@@ -1,8 +1,5 @@
-#ifndef __INCLUDE_TENSOR_H__
-#define __INCLUDE_TENSOR_H__
-
-#include <string>
-#include <cstring>
+#ifndef __SRC_TTVC_INCLUDE_TENSOR_H__
+#define __SRC_TTVC_INCLUDE_TENSOR_H__
 
 #include "utils.h"
 
