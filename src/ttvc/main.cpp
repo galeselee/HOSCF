@@ -43,6 +43,6 @@ int main(int argc, char **argv) {
     Tensor ret;
     std::function<void(Tensor *, Tensor *, Tensor *, int, int)> func = 
         ttvc_except_dim;
-    timefunc(func, &A, &X, &ret, 0, 1);
+    timettvc(func, &A, &X, &ret, 0, 1);
 
 }

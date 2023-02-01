@@ -7,8 +7,7 @@ include_directories(./include)
 
 add_subdirectory(src)
 
-file(GLOB SRC main.cpp)
-add_executable(run ${SRC})
+#file(GLOB SRC main.cpp)
+#add_executable(run ${SRC})
 
-# execution header file need tbb
-target_link_libraries(run src_lib)
+#target_link_libraries(run ttvc_lib)
