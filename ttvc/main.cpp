@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
         threads = std::stoi(argv[1]);
     }
 
-    vint A_shape{24,24,24,24,24,24}; 
+    vint A_shape{32,32,32,32,32,32}; 
     Tensor A(A_shape);
     int ndim = A.ndim;
 
