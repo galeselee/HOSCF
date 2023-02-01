@@ -3,7 +3,7 @@
 
 #include "tensor.h"
 
-#include <functional>>
+#include <functional>
 
 void timettvc(std::function<void(Tensor *, Tensor *, Tensor *, int, int)> f,
               Tensor *, Tensor *, Tensor *, int, int);

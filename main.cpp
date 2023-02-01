@@ -1,6 +1,10 @@
 #include <iostream>
+#include <functional>
 
 #include "scf.h"
+#include "common.h"
+
+int threads = 1;
 
 int main(int argc, char **argv) {
     if (argc == 2) {
