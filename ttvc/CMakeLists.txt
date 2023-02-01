@@ -6,11 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(./include)
 
 add_subdirectory(src)
-add_subdirectory(lib/googletest)
-add_subdirectory(test)
 
 file(GLOB SRC main.cpp)
 add_executable(run ${SRC})
 
 # execution header file need tbb
-target_link_libraries(run src_lib tbb)
+target_link_libraries(run src_lib)
