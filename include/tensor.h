@@ -1,9 +1,6 @@
 #ifndef __SRC_TTVC_INCLUDE_TENSOR_H__
 #define __SRC_TTVC_INCLUDE_TENSOR_H__
 
-#include <string>
-#include <cstring>
-
 #include "utils.h"
 
 class Tensor {

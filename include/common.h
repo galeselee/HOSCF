@@ -2,6 +2,9 @@
 #define __SRC_TTVC_INCLUDE_COMMON_H__
 
 #include "tensor.h"
+
+#include <functional>>
+
 void timettvc(std::function<void(Tensor *, Tensor *, Tensor *, int, int)> f,
               Tensor *, Tensor *, Tensor *, int, int);
 

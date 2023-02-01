@@ -5,8 +5,8 @@ set(SOURCE main.cpp)
 SET(CMAKE_BUILD_TYPE Debug)
 SET(CMAKE_CXX_STANDARD 17)
 
-add_subdirectory(src)
 include_directories(include)
+add_subdirectory(src)
 
 add_executable(${PROJECT_NAME} ${SOURCE})
 

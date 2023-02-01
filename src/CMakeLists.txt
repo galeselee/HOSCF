@@ -2,7 +2,7 @@ project(src_lib)
 
 add_subdirectory(ttvc)
 
-#include_directories(../include)
+include_directories(../include)
 file(GLOB SRC *.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${SRC})
