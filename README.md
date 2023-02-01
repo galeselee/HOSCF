@@ -11,3 +11,6 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 16 | 2326.4 | 94.94%|
 | 32 | 1138.6  | 96.99%
 | 64 | 697.85 | 79.12%|
+Reasons of scalability decrease when thread_num is 64:
+1. memory bus race
+2. The num(1024) of parallel task is a little small
