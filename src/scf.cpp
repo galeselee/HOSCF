@@ -2,7 +2,11 @@
 #include "ttvc.h"
 #include "utils.h"
 
-double cal_lambda(Tensor *A, Tensor *X) {
+#include <cstring>
+#include <string>
+#include <iostream>
+
+double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
     double lambda = 0;
     int scan[6];
@@ -89,7 +93,7 @@ void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
     return ;
 }
 
-void solve_svd(Tensor *J, Tensor *eigvec, double &lambda) {
+void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     int n = J->shape[0];
     int lda = n;
     double w[n];
@@ -115,7 +119,7 @@ void solve_svd(Tensor *J, Tensor *eigvec, double &lambda) {
 }
 
 void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
-    int ndim = A->ndim;
+    int n = A->ndim;
     vint shape = A->shape;
     int iter = 0;
     int n_x = 0;
@@ -166,7 +170,7 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
 
 #pragma omp parallel for
     for (int ii = n-1; ii >= 0; ii--) {
-        std::memcpy(U[ii].data, X.data + scan_nj[ii],
+        std::memcpy(U[ii].data, X.data + shape_scan[ii],
                     shape[n-1-ii] * sizeof(double));
     }
     return ;
