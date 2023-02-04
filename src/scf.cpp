@@ -21,7 +21,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
 
-#pragma omp parallel for default(shared) reduction(+:lambda)
+//#pragma omp parallel for default(shared) reduction(+:lambda)
     // for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
     //     int ii = ij / shape[1];
     //     int jj = ij % shape[1];
@@ -42,6 +42,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
     //         }
     //     }
     // }
+#pragma omp parallel for default(shared) reduction(+:lambda)
     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
         int ii = ij / shape[1];
         int jj = ij % shape[1];
@@ -63,6 +64,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
                                             * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
                                             * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
                                             * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
+                            }
                         }
                     }
                 }
@@ -72,7 +74,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
     return lambda;
 }
 
-doouble cal_res(Tensor *A, Tensor *X, double lambda) {
+double cal_res(Tensor *A, Tensor *X, double lambda) {
     Tensor w_inter({X->size});
 
 #pragma omp parallel for default(shared)
@@ -121,6 +123,9 @@ void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
     return ;
 }
 
+extern "C" {
+	void dsyev_(const char*, const char*, const  int *, double* ,const int *, double *, double *, const int*, int *);
+}
 void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     int n = J->shape[0];
     int lda = n;
