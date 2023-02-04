@@ -62,7 +62,15 @@ double cal_lambda(Tensor *A, Tensor *U) {
                             int idx_rr = rr * scan[6] + idx_tt;
                             for (int ee = 0; ee < shape[7]; ee++) {
                                 int idx_ee = ee  + idx_rr;
+                                std::cout << idx_ii << std::endl;
+                                std::cout << idx_jj << std::endl;
+                                std::cout << idx_kk << std::endl;
+                                std::cout << idx_ll << std::endl;
+                                std::cout << idx_uu << std::endl;
+                                std::cout << idx_tt << std::endl;
+                                std::cout << idx_rr << std::endl;
                                 std::cout << idx_ee << std::endl;
+                                exit();
                                 lambda += A->data[idx_ee]
                                             * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
                                             * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
