@@ -22,6 +22,16 @@ double cal_lambda(Tensor *A, Tensor *U) {
     for (int ii = 1; ii < ndim; ii++) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
+    
+    for (int ii = 0; ii < ndim; ii++) {
+        std::cout << "shape " << shape[ii] <<std::endl;
+    }
+    for (int ii = 0; ii < ndim; ii++) {
+        std::cout << "scan " << scan[ii] <<std::endl;
+    }
+    for (int ii = 0; ii < ndim; ii++) {
+        std::cout << "scan_add " << scan_add[ii] <<std::endl;
+    }
 
 //#pragma omp parallel for default(shared) reduction(+:lambda)
     // for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
