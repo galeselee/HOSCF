@@ -5,6 +5,8 @@
 #include <cstring>
 #include <string>
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
