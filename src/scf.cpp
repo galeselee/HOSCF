@@ -74,7 +74,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
     return lambda;
 }
 
-double cal_res(Tensor *A, Tensor *X, double lambda) {
+double cal_res(Tensor *J, Tensor *X, double lambda) {
     Tensor w_inter({X->size});
 
 #pragma omp parallel for default(shared)
@@ -101,7 +101,8 @@ double cal_res(Tensor *A, Tensor *X, double lambda) {
         w_inter.data[ii] -= rho * X->data[ii];
     }
 
-    auto res = w_inter.norm()/(J.norm()*std::sqrt(2)+std::abs(lambda));
+    auto res = w_inter.fnorm_range(0, w_inter.size) / 
+                (J->fnorm_range(0, J->size)*std::sqrt(2)+std::abs(lambda));
     return res;
 }
 
