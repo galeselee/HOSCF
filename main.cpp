@@ -11,14 +11,14 @@ int main(int argc, char **argv) {
         threads = std::stoi(argv[1]);
     }
 
-    vint A_shape{32,32,32,32,32,32}; 
+    vint A_shape{8,8,8,8,8,8,8,8}; 
     Tensor A(A_shape);
     int ndim = A.ndim;
 
     for (int ii = 0; ii < A.size; ii++)
         A.data[ii] = randn();
 
-    Tensor U[6];
+    Tensor U[8];
     for(int ii = 0; ii < ndim; ii++) {
         U[ii].constructor({A.shape[ndim-1-ii]});
         for(int jj = 0; jj < U[ii].size; jj++)
