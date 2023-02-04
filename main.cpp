@@ -1,5 +1,6 @@
 #include <iostream>
 #include <functional>
+#include <omp.h>
 
 #include "scf.h"
 #include "common.h"
@@ -9,6 +10,7 @@ int threads = 1;
 int main(int argc, char **argv) {
     if (argc == 2) {
         threads = std::stoi(argv[1]);
+        omp_set_num_threads(threads);
     }
 
     vint A_shape{8,8,8,8,8,8,8,8}; 

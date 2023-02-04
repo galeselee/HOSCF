@@ -132,7 +132,7 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) 
     int index4 = Ui_index[ndim-1-dim[4]];
     int index5 = Ui_index[ndim-1-dim[5]];
 
-    omp_set_num_threads(threads);
+    
 
 #pragma omp parallel for default(shared)
     for (int ij = 0; ij < outer_loop; ij++) {
