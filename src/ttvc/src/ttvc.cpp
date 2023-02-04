@@ -7,7 +7,7 @@
 #include "tensor.h"
 #include "ttvc.h"
 
-void ttvc_except_dim_6(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
     auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);
@@ -82,7 +82,7 @@ void ttvc_except_dim_6(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     return;
 }
 
-void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_8(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
     auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);

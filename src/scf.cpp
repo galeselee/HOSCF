@@ -33,27 +33,6 @@ double cal_lambda(Tensor *A, Tensor *U) {
         std::cout << "scan_add " << scan_add[ii] <<std::endl;
     }
 
-//#pragma omp parallel for default(shared) reduction(+:lambda)
-    // for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-    //     int ii = ij / shape[1];
-    //     int jj = ij % shape[1];
-    //     int idx_ii = ii * scan[0];
-    //     int idx_jj = jj * scan[1] + idx_ii;
-    //     for (int kk = 0; kk < shape[2]; kk++) {
-    //         int idx_kk = kk * scan[2] + idx_jj;
-    //         for (int ll = 0; ll < shape[3]; ll++) {
-    //             int idx_ll = ll * scan[3] + idx_kk;
-    //             for (int uu = 0; uu < shape[4]; uu++) {
-    //                 int idx_uu = uu * scan[4] + idx_ll;
-    //                 for (int tt = 0; tt < shape[5]; tt++) { 
-    //                     lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
-    //                                 * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
-    //                                 * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 #pragma omp parallel for default(shared) reduction(+:lambda)
     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
         int ii = ij / shape[1];
@@ -67,32 +46,53 @@ double cal_lambda(Tensor *A, Tensor *U) {
                 for (int uu = 0; uu < shape[4]; uu++) {
                     int idx_uu = uu * scan[4] + idx_ll;
                     for (int tt = 0; tt < shape[5]; tt++) { 
-                        int idx_tt = tt * scan[5] + idx_uu;
-                        for (int rr = 0; rr < shape[6]; rr++) {
-                            int idx_rr = rr * scan[6] + idx_tt;
-                            for (int ee = 0; ee < shape[7]; ee++) {
-                                int idx_ee = ee  + idx_rr;
-                                std::cout << "idx_ii " << idx_ii << std::endl;
-                                std::cout << "idx_jj " << idx_jj << std::endl;
-                                std::cout << "idx_kk " << idx_kk << std::endl;
-                                std::cout << "idx_ll " << idx_ll << std::endl;
-                                std::cout << "idx_uu " << idx_uu << std::endl;
-                                std::cout << "idx_tt " << idx_tt << std::endl;
-                                std::cout << "idx_rr " << idx_rr << std::endl;
-                                std::cout << "idx_ee " << idx_ee << std::endl;
-                                exit(0);
-                                lambda += A->data[idx_ee]
-                                            * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
-                                            * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
-                                            * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
-                                            * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
-                            }
-                        }
+                        lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
+                                    * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
+                                    * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
                     }
                 }
             }
         }
     }
+// #pragma omp parallel for default(shared) reduction(+:lambda)
+//     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+//         int ii = ij / shape[1];
+//         int jj = ij % shape[1];
+//         int idx_ii = ii * scan[0];
+//         int idx_jj = jj * scan[1] + idx_ii;
+//         for (int kk = 0; kk < shape[2]; kk++) {
+//             int idx_kk = kk * scan[2] + idx_jj;
+//             for (int ll = 0; ll < shape[3]; ll++) {
+//                 int idx_ll = ll * scan[3] + idx_kk;
+//                 for (int uu = 0; uu < shape[4]; uu++) {
+//                     int idx_uu = uu * scan[4] + idx_ll;
+//                     for (int tt = 0; tt < shape[5]; tt++) { 
+//                         int idx_tt = tt * scan[5] + idx_uu;
+//                         for (int rr = 0; rr < shape[6]; rr++) {
+//                             int idx_rr = rr * scan[6] + idx_tt;
+//                             for (int ee = 0; ee < shape[7]; ee++) {
+//                                 int idx_ee = ee  + idx_rr;
+//                                 std::cout << "idx_ii " << idx_ii << std::endl;
+//                                 std::cout << "idx_jj " << idx_jj << std::endl;
+//                                 std::cout << "idx_kk " << idx_kk << std::endl;
+//                                 std::cout << "idx_ll " << idx_ll << std::endl;
+//                                 std::cout << "idx_uu " << idx_uu << std::endl;
+//                                 std::cout << "idx_tt " << idx_tt << std::endl;
+//                                 std::cout << "idx_rr " << idx_rr << std::endl;
+//                                 std::cout << "idx_ee " << idx_ee << std::endl;
+//                                 exit(0);
+//                                 lambda += A->data[idx_ee]
+//                                             * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
+//                                             * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
+//                                             * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
+//                                             * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
     return lambda;
 }
 

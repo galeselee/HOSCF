@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
         omp_set_num_threads(threads);
     }
 
-    vint A_shape{8,8,8,8,8,8,8,8}; 
+    vint A_shape{16,16,16,16,16,16}; 
     Tensor A(A_shape);
     int ndim = A.ndim;
 
-    for (int ii = 0; ii < A.size; ii++)
+    for (long long int ii = 0; ii < A.size; ii++)
         A.data[ii] = randn();
 
     Tensor U[8];
