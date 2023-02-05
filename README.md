@@ -11,13 +11,9 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 16 | 2326.4 | 94.94%|
 | 32 | 1138.6  | 96.99%
 | 64 | 697.85 | 79.12%|
-2. scf on s single numa node(without O3 optimization)
-| Threads    | Time/ms | scalability(based on num_thread=1)|
-| -------- | ------- | --------------|
-| 1 | 1.9361e+06 | - |
-| 2 | 1.00471e+06 |  |
-| 4 |   |  |
-| 8 |   |  |
-| 16 |  |  |
-| 32 | 77877.9 |   |
-| 64 |  56695.4 | |
+
+
+Reasons of scalability decrease when thread_num is 64:
+1. memory bus race
+2. The num(1024) of parallel task is a little small
+
