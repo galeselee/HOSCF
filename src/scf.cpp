@@ -8,6 +8,7 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <omp.h>
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
