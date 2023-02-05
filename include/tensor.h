@@ -6,7 +6,7 @@
 class Tensor {
 public:
     vint shape;
-    long long int size;
+    int size;
     int ndim;
     double *data;
     Tensor();

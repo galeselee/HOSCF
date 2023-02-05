@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     Tensor A(A_shape);
     int ndim = A.ndim;
 
-    for (long long int ii = 0; ii < A.size; ii++)
+    for (int ii = 0; ii < A.size; ii++)
         A.data[ii] = randn();
 
     Tensor U[8];
