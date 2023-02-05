@@ -10,7 +10,7 @@ int threads = 1;
 int main(int argc, char **argv) {
     if (argc == 2) {
         threads = std::stoi(argv[1]);
-        omp_set_num_threads(threads);
+        omp_set_num_threads(threads/2);
     }
 
     vint A_shape{16,16,16,16,16,16}; 
