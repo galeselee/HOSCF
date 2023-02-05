@@ -8,7 +8,6 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
-#include <omp.h>
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
@@ -179,27 +178,18 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
 
     double lambda = cal_lambda(A, &X);
 
-    std::vector<std::vector<int> > task_lists;
-    for (int ii = 0; ii < n-1; ii++) {
-        for (int jj = ii+1; jj < n; jj++) {
-            std::vector<int> task{ii, jj};
-            task_lists.push_back(task);
-        }
-    }
-
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
-#pragma omp parallel {
-        int tid = omp_get_thread_num();
-        for (int ii = tid; ii < task_lists.size(); ii+=2) {
-            int block_ii = task_lists[ii][0];
-            int block_jj = task_lists[ii][1];
-            Tensor block_J;
-            ttvc_except_dim(A, &X, &block_J, block_ii, block_jj);
-            block_J.norm();
-            fill_J_with_block(&J, shape, block_ii, block_jj, &block_J);
+
+//#pragma omp parallel for collapse(2)
+        for (int ii = 0; ii < n-1; ii++) {
+            for (int jj = ii+1; jj < n; jj++) {
+                Tensor block_J;
+                ttvc_except_dim(A, &X, &block_J, ii, jj);
+                block_J.norm();
+                fill_J_with_block(&J, shape, ii, jj, &block_J);
+            }
         }
-    }
 
 		X.norm();
         auto res = cal_res(&J, &X, lambda);

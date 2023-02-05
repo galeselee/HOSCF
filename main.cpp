@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
         omp_set_num_threads(threads);
     }
 
-    vint A_shape{16,16,16,16,16,16}; 
+    vint A_shape{24,24,24,24,24,24}; 
     Tensor A(A_shape);
     int ndim = A.ndim;
 
