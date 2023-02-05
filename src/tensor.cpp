@@ -44,3 +44,26 @@ void Tensor::norm() {
         this->data[ii] /= sum;
     }
 }
+
+double Tensor::fnorm_range(int begin, int len) {
+	double ret = 0.0;
+	int end = begin + len;
+	for (int ii = begin; ii < end; ii++) {
+		ret += this->data[ii] * this->data[ii];
+	}
+	return std::sqrt(ret);
+}
+
+void Tensor::nmul_range(int begin, int len, const double const_num) {
+	int end = begin + len;
+	for (int ii = begin; ii < end; ii++) {
+		this->data[ii] *= const_num;
+	}
+}
+
+
+
+
+
+
+

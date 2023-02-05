@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 project(ttvc)
 
-set(CMAKE_BUILD_TYPE Debug)
+#gdb
+#set(CMAKE_BUILD_TYPE Debug)
+
+SET(CMAKE_BUILD_TYPE "Relese")
+SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall")
+SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Ofast -Wall")
 set(CMAKE_CXX_STANDARD 17)
 include_directories(./include)
 

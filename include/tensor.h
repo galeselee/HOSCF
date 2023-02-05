@@ -14,6 +14,8 @@ public:
     ~Tensor();
     void constructor(vint shape_in);
     void norm();
+	double fnorm_range(int , int);
+	void nmul_range(int, int, const double);
 };
 
 #endif

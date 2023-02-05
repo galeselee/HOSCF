@@ -1,4 +1,4 @@
-Here is the scalability result of single ttvc operation on the single numa node
+1. Here is the scalability result of single ttvc operation on the single numa node
 ```
 scale: 32 x 32 x 32 x 32 x 32 x 32
 ```
@@ -16,3 +16,4 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 Reasons of scalability decrease when thread_num is 64:
 1. memory bus race
 2. The num(1024) of parallel task is a little small
+
