@@ -13,7 +13,7 @@
 #include <vector>
 
 extern int size, rank;
-extern std::vector<std::vector<std::vector<int>>> tasks_list
+extern std::vector<std::vector<std::vector<int>>> tasks_list;
 extern std::vector<int> rank_offset;
 
 double cal_lambda(Tensor *A, Tensor *U) {
@@ -169,7 +169,7 @@ void norm_range(double *ptr, int len) {
         sum += ptr[ii] * ptr[ii];
     double fnorm = std::sqrt(sum);
     for (int ii = 0; ii < len; ii++)
-        ptr[ii] /= sum;
+        ptr[ii] /= fnorm;
 }
 
 void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
@@ -184,7 +184,7 @@ void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
     }
 }
 
-void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter, int tid) {
+void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     int n = A->ndim;
     vint shape = A->shape;
     int iter = 0;
@@ -207,20 +207,19 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter, int tid) {
 
     double lambda = cal_lambda(A, &X);
     
-
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
         for (int ii = 0; ii < tasks_list[rank].size(); ii++) {
             int block_ii = tasks_list[rank][ii][0];
-            int block_jj = tasks_list[rank][jj][0];
-            ttvc_except_dim(A, &X, J_mpi.data+16*16*(rank_offset[rank]+ii), 
+            int block_jj = tasks_list[rank][ii][1];
+            ttvc_except_dim_mpi(A, &X, J_mpi.data+16*16*(rank_offset[rank]+ii), 
                             block_ii, block_jj);
             norm_range(J_mpi.data+16*16*(rank_offset[rank]+ii), 16*16);
         }
-        MPI_Bcast((void *)J_mpi.data, 3*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        MPI_Bcast((void *)J_mpi.data+3*256, 3*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
-        MPI_Bcast((void *)J_mpi.data+6*256, 5*256, MPI_DOUBLE, 2, MPI_COMM_WORLD);
-        MPI_Bcast((void *)J_mpi.data+11*256, 4*256, MPI_DOUBLE, 3, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data, 3*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data+3*256, 3*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data+6*256, 5*256, MPI_DOUBLE, 2, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data+11*256, 4*256, MPI_DOUBLE, 3, MPI_COMM_WORLD);
 
         refact_J(J, J_mpi, shape);
 

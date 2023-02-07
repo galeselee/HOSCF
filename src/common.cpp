@@ -14,10 +14,10 @@ void timettvc(std::function<void(Tensor *, Tensor *, Tensor *, int, int)> f,
          << "ms" << std::endl;
 }
 
-void timescf(std::function<void(Tensor *, Tensor *, double, uint32_t, int)> f,
-             Tensor *A, Tensor *U, double tol, uint32_t max_iter, int tid) {
+void timescf(std::function<void(Tensor *, Tensor *, double, uint32_t)> f,
+             Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     auto start = std::chrono::system_clock::now();
-    f(A, U, tol, max_iter, tid);
+    f(A, U, tol, max_iter);
     auto end = std::chrono::system_clock::now();
     std::cout << "time : " \
          << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0

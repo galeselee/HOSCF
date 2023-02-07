@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <mpi.h>
 #include <vector>
+#include <cmath>
 
 #include "scf.h"
 #include "common.h"
@@ -17,14 +18,14 @@ void init_mpi_vector() {
     tasks_list.push_back({{0, 3}, {0, 4}, {2, 4}});
     tasks_list.push_back({{0, 5}, {1, 2}, {2, 5}, {3, 4}, {3, 5}});
     tasks_list.push_back({{1, 3}, {1, 4}, {1, 5}, {4, 5}});
-    rank_offset.push(0);
-    rank_offset.push(3);
-    rank_offset.push(6);
-    rank_offset.push(11);
+    rank_offset.push_back(0);
+    rank_offset.push_back(3);
+    rank_offset.push_back(6);
+    rank_offset.push_back(11);
 }
 
 int main(int argc, char **argv) {
-    MPI_Init(&argc, &argv);
+    MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size); // get num of procs
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); // get my rank      
 
@@ -39,7 +40,7 @@ int main(int argc, char **argv) {
     int ndim = A.ndim;
 
     for (int ii = 0; ii < A.size; ii++)
-        A.data[ii] = randn();
+        A.data[ii] = sin(ii);
 
     Tensor U[8];
     for(int ii = 0; ii < ndim; ii++) {
@@ -48,9 +49,6 @@ int main(int argc, char **argv) {
             U[ii].data[jj] = randn();
         U[ii].norm();
     }
-
-    std::function<void(Tensor *, Tensor *, double, uint32_t, int)> func = scf;
-
-	for (int ii = 0; ii < 15; ii++)
-		timescf(func, &A, U, 5.0e-4, 10, ii);
+    std::function<void(Tensor *, Tensor *, double, uint32_t)> func = scf;
+    timescf(func, &A, U, 5.0e-4, 10);
 }
