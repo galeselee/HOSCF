@@ -8,6 +8,13 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <omp.h>
+#include <mpi.h>
+#include <vector>
+
+extern int size, rank;
+extern std::vector<std::vector<std::vector<int>>> tasks_list
+extern std::vector<int> rank_offset;
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
@@ -110,7 +117,7 @@ double cal_res(Tensor *J, Tensor *X, double lambda) {
     return res;
 }
 
-void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
+void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, double *block) {
     int n_J = J->shape[0];
     int x_begin = 0;
     int y_begin = 0;
@@ -123,7 +130,7 @@ void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
         y_begin += shapeA[n-1-i];
     
     for (int i = 0; i < n_x; i++) {
-        std::memcpy(J->data + (i+x_begin)*n_J + y_begin, block->data + i*n_y, sizeof(double) * n_y);
+        std::memcpy(J->data + (i+x_begin)*n_J + y_begin, block + i*n_y, sizeof(double) * n_y);
     }
     return ;
 }
@@ -156,7 +163,28 @@ void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     return ;
 }
 
-void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
+void norm_range(double *ptr, int len) {
+    double sum = 0.0;
+    for (int ii = 0; ii < len; ii++)
+        sum += ptr[ii] * ptr[ii];
+    double fnorm = std::sqrt(sum);
+    for (int ii = 0; ii < len; ii++)
+        ptr[ii] /= sum;
+}
+
+void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
+    int offset = 0;
+    for(auto &list : tasks_list) {
+        for (auto &task : list) {
+            auto ii = task[0];
+            auto jj = task[1];
+            double *ptr = block_mpi.data + (offset++) * 256;
+            fill_J_with_block(&block, shape, ii, jj, ptr);
+        }
+    }
+}
+
+void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter, int tid) {
     int n = A->ndim;
     vint shape = A->shape;
     int iter = 0;
@@ -169,6 +197,7 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     }
 
     Tensor J({n_x, n_x});
+    Tensor J_mpi({n_x, n_x});
     Tensor X({n_x});
 
     for (int ii = 0; ii < n; ii++) {
@@ -177,34 +206,29 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     }
 
     double lambda = cal_lambda(A, &X);
-
-    std::vector<std::vector<int> > task_lists;
-    for (int ii = 0; ii < n-1; ii++) {
-        for (int jj = ii+1; jj < n; jj++) {
-            std::vector<int> task{ii, jj};
-            task_lists.push_back(task);
-        }
-    }
+    
 
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
-//#pragma omp parallel for num_threads(2)
-        for (int ii = 0; ii < task_lists.size(); ii++) {
-            int block_ii = task_lists[ii][0];
-            int block_jj = task_lists[ii][1];
-            Tensor block_J;
-            ttvc_except_dim(A, &X, &block_J, block_ii, block_jj);
-            block_J.norm();
-            fill_J_with_block(&J, shape, block_ii, block_jj, &block_J);
+        for (int ii = 0; ii < tasks_list[rank].size(); ii++) {
+            int block_ii = tasks_list[rank][ii][0];
+            int block_jj = tasks_list[rank][jj][0];
+            ttvc_except_dim(A, &X, J_mpi.data+16*16*(rank_offset[rank]+ii), 
+                            block_ii, block_jj);
+            norm_range(J_mpi.data+16*16*(rank_offset[rank]+ii), 16*16);
         }
+        MPI_Bcast((void *)J_mpi.data, 3*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast((void *)J_mpi.data+3*256, 3*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
+        MPI_Bcast((void *)J_mpi.data+6*256, 5*256, MPI_DOUBLE, 2, MPI_COMM_WORLD);
+        MPI_Bcast((void *)J_mpi.data+11*256, 4*256, MPI_DOUBLE, 3, MPI_COMM_WORLD);
+
+        refact_J(J, J_mpi, shape);
 
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
 
-        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-        if (res < tol) {
-             break;
-         }
+        if (rank == 0)
+            std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
 
         svd_solve(&J, &X, lambda);
 
