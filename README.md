@@ -22,3 +22,8 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 16 | 987.664 |  |
 | 32 | 700 |   |
 | 64 |  | |
+
+Reasons of scalability decrease when thread_num is 32:
+1. memory bus race
+2. The num(1024) of parallel task is a little small
+
