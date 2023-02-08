@@ -13,6 +13,7 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 64 | 697.85 | 79.12%|
 
 2. scf on s single numa node(with O3 optimization)
+
 | Threads    | Time/ms | scalability(based on num_thread=1)|
 | -------- | ------- | --------------|
 | 1 | 14362.7 | - |

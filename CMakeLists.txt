@@ -11,10 +11,13 @@ SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Ofast -Wall")
 SET(CMAKE_CXX_STANDARD 17)
 
+SET(MPI_INCLUDE_PATH "/share/software/mpich-3.3.2/include/")
+include_directories(SYSTEM ${MPI_INCLUDE_PATH})
 include_directories(include)
 add_subdirectory(src)
 
 add_executable(${PROJECT_NAME} ${SOURCE})
-
+SET(MPI_C_LIBRARIES "/share/software/mpich-3.3.2/lib/libmpi.so")
+target_link_libraries(${PROJECT_NAME} ${MPI_C_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} src_lib)
 
