@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     int ndim = A.ndim;
 
     for (int ii = 0; ii < A.size; ii++)
-        A.data[ii] = sin(ii);
+        A.data[ii] = randn();
 
     Tensor U[8];
     for(int ii = 0; ii < ndim; ii++) {
@@ -50,5 +50,5 @@ int main(int argc, char **argv) {
         U[ii].norm();
     }
     std::function<void(Tensor *, Tensor *, double, uint32_t)> func = scf;
-    timescf(func, &A, U, 5.0e-4, 10);
+    timescf(func, &A, U, 5.0e-4, 50);
 }
