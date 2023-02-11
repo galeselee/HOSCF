@@ -216,10 +216,8 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
                             block_ii, block_jj);
             norm_range(J_mpi.data+16*16*(rank_offset[rank]+ii), 16*16);
         }
-        MPI_Bcast(J_mpi.data, 3*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        MPI_Bcast(J_mpi.data+3*256, 3*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
-        MPI_Bcast(J_mpi.data+6*256, 5*256, MPI_DOUBLE, 2, MPI_COMM_WORLD);
-        MPI_Bcast(J_mpi.data+11*256, 4*256, MPI_DOUBLE, 3, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data, 6*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data+6*256, 9*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
 
         refact_J(J, J_mpi, shape);
 
