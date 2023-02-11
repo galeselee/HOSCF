@@ -11,6 +11,7 @@
 #include <omp.h>
 #include <mpi.h>
 #include <vector>
+#include <chrono>
 
 extern int size, rank;
 extern std::vector<std::vector<std::vector<int>>> tasks_list;
@@ -206,9 +207,11 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     }
 
     double lambda = cal_lambda(A, &X);
-    
+
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
+		MPI_Barrier(MPI_COMM_WORLD);
+        auto start = std::chrono::system_clock::now(); 
         for (int ii = 0; ii < tasks_list[rank].size(); ii++) {
             int block_ii = tasks_list[rank][ii][0];
             int block_jj = tasks_list[rank][ii][1];
@@ -216,8 +219,20 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
                             block_ii, block_jj);
             norm_range(J_mpi.data+16*16*(rank_offset[rank]+ii), 16*16);
         }
+        auto end = std::chrono::system_clock::now(); 
+		if (rank == 0)
+        std::cout << "ttvc : " \
+         << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+         << "ms" << std::endl; 
+
+        start = std::chrono::system_clock::now();
         MPI_Bcast(J_mpi.data, 6*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(J_mpi.data+6*256, 9*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
+        end = std::chrono::system_clock::now();
+		if (rank == 0)
+        std::cout << "Bcast : " \
+         << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+         << "ms" << std::endl; 
 
         refact_J(J, J_mpi, shape);
 
