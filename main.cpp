@@ -5,6 +5,7 @@
 #include "scf.h"
 #include "common.h"
 
+#include "mkl_cblas.h"
 int threads = 1;
 
 int main(int argc, char **argv) {

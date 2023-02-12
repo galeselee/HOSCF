@@ -1,6 +1,7 @@
 #include "scf.h"
 #include "ttvc.h"
 #include "utils.h"
+#include <omp.h>
 
 #include <cstring>
 #include <string>
@@ -8,6 +9,7 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <chrono>
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
@@ -131,6 +133,7 @@ void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
 extern "C" {
 	void dsyev_(const char*, const char*, const  int *, double* ,const int *, double *, double *, const int*, int *);
 }
+
 void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     int n = J->shape[0];
     int lda = n;
@@ -187,8 +190,8 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     }
 
     while (iter < max_iter) {
+		auto start = std::chrono::system_clock::now(); 
         std::memset(J.data, 0, sizeof(double) * J.size);
-//#pragma omp parallel for num_threads(2)
         for (int ii = 0; ii < task_lists.size(); ii++) {
             int block_ii = task_lists[ii][0];
             int block_jj = task_lists[ii][1];
@@ -197,6 +200,10 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
             block_J.norm();
             fill_J_with_block(&J, shape, block_ii, block_jj, &block_J);
         }
+		auto end = std::chrono::system_clock::now(); 
+		std::cout << "ttvc : " \
+	         << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+	         << "ms" << std::endl;
 
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
