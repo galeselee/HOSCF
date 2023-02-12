@@ -112,7 +112,7 @@ double cal_res(Tensor *J, Tensor *X, double lambda) {
     return res;
 }
 
-void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
+void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, double *block) {
     int n_J = J->shape[0];
     int x_begin = 0;
     int y_begin = 0;
@@ -125,7 +125,7 @@ void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, Tensor *block) {
         y_begin += shapeA[n-1-i];
     
     for (int i = 0; i < n_x; i++) {
-        std::memcpy(J->data + (i+x_begin)*n_J + y_begin, block->data + i*n_y, sizeof(double) * n_y);
+        std::memcpy(J->data + (i+x_begin)*n_J + y_begin, block + i*n_y, sizeof(double) * n_y);
     }
     return ;
 }
@@ -159,6 +159,27 @@ void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     return ;
 }
 
+void norm_range(double *ptr, int len) {
+    double sum = 0.0;
+    for (int ii = 0; ii < len; ii++)
+        sum += ptr[ii] * ptr[ii];
+    double fnorm = std::sqrt(sum);
+    for (int ii = 0; ii < len; ii++)
+        ptr[ii] /= fnorm;
+}
+
+void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
+    int offset = 0;
+    for(auto &list : tasks_list) {
+        for (auto &task : list) {
+            auto ii = task[0];
+            auto jj = task[1];
+            double *ptr = block_mpi.data + (offset++) * 256;
+            fill_J_with_block(&block, shape, ii, jj, ptr);
+        }
+    }
+}
+
 void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     int n = A->ndim;
     vint shape = A->shape;
@@ -172,6 +193,7 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     }
 
     Tensor J({n_x, n_x});
+    Tensor J_mpi({n_x, n_x});
     Tensor X({n_x});
 
     for (int ii = 0; ii < n; ii++) {
@@ -180,14 +202,6 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     }
 
     double lambda = cal_lambda(A, &X);
-
-    std::vector<std::vector<int> > task_lists;
-    for (int ii = 0; ii < n-1; ii++) {
-        for (int jj = ii+1; jj < n; jj++) {
-            std::vector<int> task{ii, jj};
-            task_lists.push_back(task);
-        }
-    }
 
     while (iter < max_iter) {
 		auto start = std::chrono::system_clock::now(); 
@@ -208,10 +222,8 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
 
-        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-        if (res < tol) {
-             break;
-         }
+        if (rank == 0)
+            std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
 
         svd_solve(&J, &X, lambda);
 
