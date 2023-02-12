@@ -12,17 +12,16 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 32 | 1138.6  | 96.99% |
 | 64 | 697.85 | 79.12%|
 
-2. scf(with O3 optimization)
+2. scf
 
 | Threads    | Time/ms | scalability(based on num_thread=1)|
 | -------- | ------- | --------------|
-| 1 |  | - |
-| 2 |  |  |
-| 4 |  |  |
-| 8 |  |  |
-| 16 | |  |
-| 32 | |   |
-| 64 |  | |
+| 1 | 14305 | - |
+| 2 | 7401.1 |  |
+| 4 | 3735.6 |  |
+| 8 | 1925.9 |  |
+| 16 | 1106.5 |  |
+| 32(with two mpi processes) | 635.56 |   |
 
 Reasons of scalability decrease when thread_num is 32:
 1. memory bus race

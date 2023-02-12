@@ -65,9 +65,9 @@ double calTest(int max_threads, vector<vector<double> > & a,  vector<vector<doub
 int main(int argc, char **argv) { 
 	int N = atoi(argv[1]);
 	int N2 = N/100;
-	vector<vector<double>> a(N,vector<double>(N2,1));
-	vector<vector<double>> b(N,vector<double>(N2,2));
-	vector<vector<double>> c(N,vector<double>(N2,0));
+	vector<vector<double> > a(N,vector<double>(N2,1));
+	vector<vector<double> > b(N,vector<double>(N2,2));
+	vector<vector<double> > c(N,vector<double>(N2,0));
 	
 	cout << "n_threads\tt_wall\tspeedup_factor\tideal_fractor\n"; 
 	int n = 7;
