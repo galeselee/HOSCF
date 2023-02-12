@@ -15,7 +15,6 @@
 #include "mkl_lapacke.h"
 #include "omp.h"
 #include "mkl.h"
-int NDIM = 6;
 
 std::chrono::system_clock::time_point tnow() {
     return std::chrono::system_clock::now();
@@ -64,7 +63,7 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *ret, int dim) {
     ret->data = (double *)std::malloc(sizeof(double) * ret->size);
     std::memset(ret->data, 0, sizeof(double) * ret->size);
 
-    int ttvc_dim[NDIM-1];
+    int ttvc_dim[5];
     int cnt = 0;
     for (int ii = 0; ii < ndim; ii++) {
         if (ii == adim) continue;
@@ -76,7 +75,6 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *ret, int dim) {
         scan[ii] = scan[ii+1] * shape[ii+1];
     }
 
-    if (NDIM == 6) {
 #pragma omp parallel for default(shared)
     for (int ii = 0; ii < shape[adim]; ii++) {
         int idx_ii = ii * scan[adim];
@@ -101,29 +99,6 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *ret, int dim) {
             }
         }
     }
-        
-    } else if (NDIM == 5) {
-#pragma omp parallel for default(shared)
-    for (int ii = 0; ii < shape[adim]; ii++) {
-        int idx_ii = ii * scan[adim];
-        for (int jj = 0; jj < shape[ttvc_dim[0]]; jj++) {
-            int idx_jj = jj * scan[ttvc_dim[0]] + idx_ii;
-            for (int kk = 0; kk < shape[ttvc_dim[1]]; kk++) {
-                int idx_kk = kk * scan[ttvc_dim[1]] + idx_jj;
-                for (int ll = 0; ll < shape[ttvc_dim[2]]; ll++) {
-                    int idx_ll = ll * scan[ttvc_dim[2]] + idx_kk;
-                    for (int mm = 0; mm < shape[ttvc_dim[3]]; mm++) {
-                        ret->data[ii] += A->data[idx_ll + mm * scan[ttvc_dim[3]]] *
-                                    U[ndim-1-ttvc_dim[0]].data[jj] *
-                                    U[ndim-1-ttvc_dim[1]].data[kk] *
-                                    U[ndim-1-ttvc_dim[2]].data[ll] *
-                                    U[ndim-1-ttvc_dim[3]].data[mm];
-                    }
-                }
-            }
-        }
-    }
-    }
 }
 
 
@@ -137,7 +112,6 @@ void ttvc(Tensor *A, Tensor *U, double *ret) {
         scan[ii] = scan[ii+1] * shape[ii+1];
     }
 
-    if (NDIM == 6) {
 #pragma omp parallel for default(shared) reduction(+:ret[0])
     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
         int ii = ij / shape[1];
@@ -159,28 +133,6 @@ void ttvc(Tensor *A, Tensor *U, double *ret) {
             }
         }
     }
-    }
-    if (NDIM == 5) {
-#pragma omp parallel for default(shared) reduction(+:ret[0])
-    for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-        int ii = ij / shape[1];
-        int jj = ij % shape[1];
-        int idx_jj = jj * scan[1] + ii * scan[0];
-        for (int kk = 0; kk < shape[2]; kk++) {
-            int idx_kk = kk * scan[2] + idx_jj;
-            for (int ll = 0; ll < shape[3]; ll++) {
-                int idx_ll = ll * scan[3] + idx_kk;
-                for (int mm = 0; mm < shape[4]; mm++) {
-                        ret[0] += A->data[idx_ll + mm * scan[4]] * 
-                                U[4].data[ii] * U[3].data[jj] *
-                                U[2].data[kk] * U[1].data[ll] *
-                                U[0].data[mm];
-                }
-            }
-        }
-    }
-    }
-
 }
 
 void Nmul_ptr(double *ptr, double num, int size) {
@@ -197,8 +149,7 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
     int iter = 0;
     double lambda = 0.0;
     double AF = fnorm_ptr(A->data, A->size);
-    // while (std::abs(residual - residual_last) > tol && iter < max_iter) {
-    while (iter < max_iter) {
+    while (std::abs(residual - residual_last) > tol && iter < max_iter) {
         for (int ii = 0; ii < ndim; ii++) {
             Tensor ret;
             ttvc_except_dim(A, U, &ret, ii);
@@ -209,8 +160,8 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
         residual_last = residual;
         residual = std::sqrt(1 - (lambda * lambda) / (AF * AF));
         iter ++;
-        // std::cout << "iter = " << iter << ", lambda = " << lambda << ", residual = " << residual
-        //         << ", error_delta = " << std::abs(residual - residual_last) << std::endl;
+        std::cout << "iter = " << iter << ", lambda = " << lambda << ", residual = " << residual
+                 << ", error_delta = " << std::abs(residual - residual_last) << std::endl;
     }
 }
 
@@ -218,34 +169,14 @@ int main(int argc, char **argv) {
 	if (argc < 2) {
 		std::cout << "INFO : use default omp num threads 8" << std::endl;
 		omp_set_num_threads(8);
-		mkl_set_num_threads(8);
-        NDIM = 6;
 	}
 	else {
 		omp_set_num_threads(std::stoi(argv[1]));
-		mkl_set_num_threads(std::stoi(argv[1]));
-        NDIM = std::stoi(argv[2]);
 	}
 
     vint shapeA;
-    if (NDIM == 3) {
-        for (int ii = 0; ii < 3; ii++) {
-            shapeA.push_back(256);
-        }
-    } else if (NDIM == 4) {
-        for (int ii = 0; ii < 4; ii++) {
-            shapeA.push_back(64);
-        }
-    } else if (NDIM == 5) {
-        for (int ii = 0; ii < 4; ii++) {
-            shapeA.push_back(32);
-        }
+    for (int ii = 0; ii < 6; ii++) {
         shapeA.push_back(16);
-
-    } else if (NDIM == 6) {
-        for (int ii = 0; ii < 6; ii++) {
-            shapeA.push_back(16);
-        }
     }
 
     int ndim = shapeA.size();
@@ -266,7 +197,7 @@ int main(int argc, char **argv) {
         scan[ii] = scan[ii+1] * shapeA[ii+1];
     }
    
-    for (int ii = 0; ii < std::pow(16, 6); ii++) {
+    for (int ii = 0; ii < A.size; ii++) {
         A.data[ii] = randn();
     }
   
@@ -284,7 +215,7 @@ int main(int argc, char **argv) {
     }
 
 	auto tt = tnow();
-    als(&A, U, 1e-12, 50);
+    als(&A, U, 1e-12, 10);
 	pti(tt, "total time");
     std::free(A.data);
     for (int ii = 0; ii < ndim; ii++) {
