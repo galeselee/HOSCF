@@ -8,7 +8,8 @@
 #include "scf.h"
 #include "common.h"
 
-int rank, size;
+#include "mkl_cblas.h"
+
 int threads = 1;
 std::vector<std::vector<std::vector<int> > > tasks_list;
 std::vector<int> rank_offset;
