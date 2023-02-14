@@ -1,13 +1,32 @@
 #include <iostream>
 #include <functional>
 #include <omp.h>
+#include <mpi.h>
 
 #include "scf.h"
 #include "common.h"
 
 int threads = 1;
+std::vector<std::vector<std::vector<int> > > tasks_list;
+std::vector<int> rank_offset;
+int size, rank;
 
-int NDIM = 4;
+int NDIM = 6;
+
+void init_mpi_vector() {
+    switch (NDIM)
+    {
+    case 6:
+        tasks_list.push_back({{0, 1}, {0, 3}, {0, 5}, {1, 3}, {1, 5}, {2, 2}, {2, 5}, {3, 4}});
+        tasks_list.push_back({{0, 2}, {1, 4}, {1, 2}, {1, 4}, {2, 1}, {2, 3}, {2, 4}, {3, 5}, {4, 5}});
+        rank_offset.push_back(0);
+        rank_offset.push_back(8);
+        break;
+    
+    default:
+        break;
+    }
+}
 
 int main(int argc, char **argv) {
     if (argc == 2) {
@@ -18,6 +37,11 @@ int main(int argc, char **argv) {
         omp_set_num_threads(threads);
         NDIM = std::stoi(argv[1]);
     }
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size); // get num of procs
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank); // get my rank 
+    init_mpi_vector();
+
 
     vint A_shape;
     if (NDIM == 8) {
@@ -61,4 +85,5 @@ int main(int argc, char **argv) {
     std::function<void(Tensor *, Tensor *, double, uint32_t)> func = scf;
 
     timescf(func, &A, U, 5.0e-4, 10);
+    MPI_Finalize();
 }

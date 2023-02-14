@@ -7,7 +7,7 @@
 #include "tensor.h"
 #include "ttvc.h"
 
-void ttvc_except_dim_4(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_4(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
     auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);
@@ -15,8 +15,6 @@ void ttvc_except_dim_4(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     int a_dim0 = ndim-1-dim0;
     int a_dim1 = ndim-1-dim1;
     
-    block_J->constructor({A->shape[a_dim0], A->shape[a_dim1]});
-
     int dim[ndim-2]; // C++ 11
     int cnt = 0;
 
@@ -56,7 +54,7 @@ void ttvc_except_dim_4(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
         for (int kk = 0; kk < loop_index0; kk++) {
             int idx_kk = kk * stride0 + idx_jj;
             for (int ll = 0; ll < loop_index1; ll++) {
-                block_J->data[block_idx] += 
+                block_J[block_idx] += 
                     A->data[idx_kk + ll * stride1] * 
                     U->data[index1+ll] * 
                     U->data[index0+kk];
@@ -67,7 +65,7 @@ void ttvc_except_dim_4(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     return;
 }
 
-void ttvc_except_dim_5(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_5(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
     auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);
@@ -75,8 +73,6 @@ void ttvc_except_dim_5(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     int a_dim0 = ndim-1-dim0;
     int a_dim1 = ndim-1-dim1;
     
-    block_J->constructor({A->shape[a_dim0], A->shape[a_dim1]});
-
     int dim[ndim-2]; // C++ 11
     int cnt = 0;
 
@@ -121,7 +117,7 @@ void ttvc_except_dim_5(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
             for (int ll = 0; ll < loop_index1; ll++) {
                 int idx_ll = ll * stride1 + idx_kk;
                 for (int uu = 0; uu < loop_index2; uu++) {
-                    block_J->data[block_idx] += 
+                    block_J[block_idx] += 
                         A->data[idx_ll + uu * stride2] * 
                         U->data[index2+uu] * 
                         U->data[index1+ll] * 
@@ -134,7 +130,7 @@ void ttvc_except_dim_5(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     return;
 }
 
-void ttvc_except_dim_6(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_6(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
     auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);
@@ -142,8 +138,6 @@ void ttvc_except_dim_6(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     int a_dim0 = ndim-1-dim0;
     int a_dim1 = ndim-1-dim1;
     
-    block_J->constructor({A->shape[a_dim0], A->shape[a_dim1]});
-
     int dim[ndim-2]; // C++ 11
     int cnt = 0;
 
@@ -193,7 +187,7 @@ void ttvc_except_dim_6(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
                 for (int uu = 0; uu < loop_index2; uu++) {
                     int idx_uu = uu * stride2 + idx_ll;
                     for (int tt = 0; tt < loop_index3; tt++) {
-                        block_J->data[block_idx] += 
+                        block_J[block_idx] += 
                             A->data[idx_uu + tt * stride3] * 
                             U->data[index3+tt] * 
                             U->data[index2+uu] * 
@@ -208,7 +202,7 @@ void ttvc_except_dim_6(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     return;
 }
 
-void ttvc_except_dim_7(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_7(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
         auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);
@@ -216,8 +210,6 @@ void ttvc_except_dim_7(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     int a_dim0 = ndim-1-dim0;
     int a_dim1 = ndim-1-dim1;
     
-    block_J->constructor({A->shape[a_dim0], A->shape[a_dim1]});
-
     int dim[ndim-2]; // C++ 11
     int cnt = 0;
 
@@ -272,7 +264,7 @@ void ttvc_except_dim_7(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
                         int idx_tt = tt * stride3 + idx_uu;
                         for (int rr = 0; rr < loop_index4; rr++) {
                             int idx_rr = rr * stride4 + idx_tt;
-                            block_J->data[block_idx] += 
+                            block_J[block_idx] += 
                                 A->data[idx_rr] * 
                                 U->data[index4+rr] *
                                 U->data[index3+tt] * 
@@ -289,7 +281,7 @@ void ttvc_except_dim_7(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     return;
 }
 
-void ttvc_except_dim_8(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_8(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
     auto shape = A->shape;
     auto ndim = A->ndim;
     assert(dim0 < ndim);
@@ -297,8 +289,6 @@ void ttvc_except_dim_8(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     int a_dim0 = ndim-1-dim0;
     int a_dim1 = ndim-1-dim1;
     
-    block_J->constructor({A->shape[a_dim0], A->shape[a_dim1]});
-
     int dim[ndim-2]; // C++ 11
     int cnt = 0;
 
@@ -360,7 +350,7 @@ void ttvc_except_dim_8(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
                             int idx_rr = rr * stride4 + idx_tt;
                             for (int ee = 0; ee < loop_index5; ee++) {
                                 int idx_ee = ee * stride5 + idx_rr;
-                                block_J->data[block_idx] += 
+                                block_J[block_idx] += 
                                     A->data[idx_ee] * 
                                     U->data[index5+ee] *
                                     U->data[index4+rr] *
@@ -379,7 +369,7 @@ void ttvc_except_dim_8(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1
     return;
 }
 
-void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1) {
+void ttvc_except_dim_mpi(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
     switch (NDIM)
     {
     case 4:
