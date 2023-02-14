@@ -6,5 +6,6 @@
 #include <stdint.h>
 void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter);
 
+extern int NDIM;
 
 #endif

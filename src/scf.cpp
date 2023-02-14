@@ -23,58 +23,121 @@ double cal_lambda(Tensor *A, Tensor *U) {
     for (int ii = 1; ii < ndim; ii++) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
-    
+    if (NDIM == 4) {
+    #pragma omp parallel for default(shared) reduction(+:lambda)
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    lambda += A->data[idx_kk + ll] * U->data[scan_add[0]+ll] * U->data[scan_add[1]+kk]
+                                * U->data[scan_add[2]+jj] * U->data[scan_add[3]+ii];
+                }
+            }
+        }
+    } else if (NDIM == 5) {
 #pragma omp parallel for default(shared) reduction(+:lambda)
-    for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-        int ii = ij / shape[1];
-        int jj = ij % shape[1];
-        int idx_ii = ii * scan[0];
-        int idx_jj = jj * scan[1] + idx_ii;
-        for (int kk = 0; kk < shape[2]; kk++) {
-            int idx_kk = kk * scan[2] + idx_jj;
-            for (int ll = 0; ll < shape[3]; ll++) {
-                int idx_ll = ll * scan[3] + idx_kk;
-                for (int uu = 0; uu < shape[4]; uu++) {
-                    int idx_uu = uu * scan[4] + idx_ll;
-                    for (int tt = 0; tt < shape[5]; tt++) { 
-                        lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
-                                    * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
-                                    * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        lambda += A->data[idx_ll + uu] * U->data[scan_add[0]+uu] * U->data[scan_add[1]+ll]
+                                    * U->data[scan_add[2]+kk] * U->data[scan_add[3]+jj]
+                                    * U->data[scan_add[4]+ii];
+                    }
+                }
+            }
+        }
+    } else if (NDIM == 6) {
+#pragma omp parallel for default(shared) reduction(+:lambda)
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        int idx_uu = uu * scan[4] + idx_ll;
+                        for (int tt = 0; tt < shape[5]; tt++) { 
+                            lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
+                                        * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
+                                        * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
+                        }
+                    }
+                }
+            }
+        }
+    } else if (NDIM == 7) {
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        int idx_uu = uu * scan[4] + idx_ll;
+                        for (int tt = 0; tt < shape[5]; tt++) { 
+                            int idx_tt = tt * scan[5] + idx_uu;
+                            for (int rr = 0; rr < shape[6]; rr++) {
+                                int idx_rr = rr + idx_tt;
+                                lambda += A->data[idx_rr]
+                                            * U->data[scan_add[0]+rr]
+                                            * U->data[scan_add[1]+tt] * U->data[scan_add[2]+uu]
+                                            * U->data[scan_add[3]+ll] * U->data[scan_add[4]+kk]
+                                            * U->data[scan_add[5]+jj] * U->data[scan_add[6]+ii];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else if (NDIM == 8) {
+    #pragma omp parallel for default(shared) reduction(+:lambda)
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        int idx_uu = uu * scan[4] + idx_ll;
+                        for (int tt = 0; tt < shape[5]; tt++) { 
+                            int idx_tt = tt * scan[5] + idx_uu;
+                            for (int rr = 0; rr < shape[6]; rr++) {
+                                int idx_rr = rr * scan[6] + idx_tt;
+                                for (int ee = 0; ee < shape[7]; ee++) {
+                                    int idx_ee = ee + idx_rr;
+                                    lambda += A->data[idx_ee]
+                                                * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
+                                                * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
+                                                * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
+                                                * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
-// #pragma omp parallel for default(shared) reduction(+:lambda)
-//     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-//         int ii = ij / shape[1];
-//         int jj = ij % shape[1];
-//         int idx_ii = ii * scan[0];
-//         int idx_jj = jj * scan[1] + idx_ii;
-//         for (int kk = 0; kk < shape[2]; kk++) {
-//             int idx_kk = kk * scan[2] + idx_jj;
-//             for (int ll = 0; ll < shape[3]; ll++) {
-//                 int idx_ll = ll * scan[3] + idx_kk;
-//                 for (int uu = 0; uu < shape[4]; uu++) {
-//                     int idx_uu = uu * scan[4] + idx_ll;
-//                     for (int tt = 0; tt < shape[5]; tt++) { 
-//                         int idx_tt = tt * scan[5] + idx_uu;
-//                         for (int rr = 0; rr < shape[6]; rr++) {
-//                             int idx_rr = rr * scan[6] + idx_tt;
-//                             for (int ee = 0; ee < shape[7]; ee++) {
-//                                 int idx_ee = ee  + idx_rr;
-//                                 lambda += A->data[idx_ee]
-//                                             * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
-//                                             * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
-//                                             * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
-//                                             * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
     return lambda;
 }
 
