@@ -181,7 +181,6 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
 
-//#pragma omp parallel for collapse(2)
         for (int ii = 0; ii < n-1; ii++) {
             for (int jj = ii+1; jj < n; jj++) {
                 Tensor block_J;

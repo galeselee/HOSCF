@@ -10,6 +10,7 @@ add_library(${PROJECT_NAME} SHARED ${SRC})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC ttvc_lib)
 
+set(BLA_VENDOR Intel10_64lp_seq)
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${BLAS_LIBRARIES})
