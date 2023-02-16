@@ -5,6 +5,7 @@
 
 #include "scf.h"
 #include "common.h"
+#include "offload_task.h"
 
 int threads = 1;
 std::vector<std::vector<std::vector<int> > > tasks_list;
@@ -13,19 +14,8 @@ int size, rank;
 
 int NDIM = 6;
 
-void init_mpi_vector() {
-    switch (NDIM)
-    {
-    case 6:
-        tasks_list.push_back({{0, 1}, {0, 3}, {0, 5}, {1, 3}, {1, 5}, {2, 2}, {2, 5}, {3, 4}});
-        tasks_list.push_back({{0, 2}, {1, 4}, {1, 2}, {1, 4}, {2, 1}, {2, 3}, {2, 4}, {3, 5}, {4, 5}});
-        rank_offset.push_back(0);
-        rank_offset.push_back(8);
-        break;
-    
-    default:
-        break;
-    }
+void init_mpi_vector(Tensor *A, Tensor *U) {
+    offload_task(A, U);
 }
 
 int main(int argc, char **argv) {
@@ -40,8 +30,6 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size); // get num of procs
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); // get my rank 
-    init_mpi_vector();
-
 
     vint A_shape;
     if (NDIM == 8) {
@@ -82,8 +70,13 @@ int main(int argc, char **argv) {
         U[ii].norm();
     }
 
+    // std::cout << "start init_mpi_vector" << std::endl;
+    init_mpi_vector(&A, U);
+    // std::cout << "finish init_mpi_vector" << std::endl;
+
     std::function<void(Tensor *, Tensor *, double, uint32_t)> func = scf;
 
+    MPI_Barrier(MPI_COMM_WORLD);
     timescf(func, &A, U, 5.0e-4, 10);
     MPI_Finalize();
 }

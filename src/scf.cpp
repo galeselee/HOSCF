@@ -286,11 +286,11 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
         MPI_Bcast(J_mpi.data, 6*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(J_mpi.data+6*256, 9*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
         end = std::chrono::system_clock::now();
-		if (rank == 0) {
+		//if (rank == 0) {
             std::cout << "Bcast : " \
             << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
             << "ms" << std::endl; 
-        }
+        //}
 
         refact_J(J, J_mpi, shape);
 
