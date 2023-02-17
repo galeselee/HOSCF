@@ -231,12 +231,27 @@ void norm_range(double *ptr, int len) {
 }
 
 void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
-    int offset = 0;
+    std::vector<int> offset{0};
+    int offset_idx = 0;
+    for(int ii = 1; ii < tasks_list[0].size(); ii++) {
+        offset.push_back(shape[NDIM-1-tasks_list[0][ii-1][0]] * 
+                         shape[NDIM-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
+    }
+    offset.push_back(shape[NDIM-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
+                     shape[NDIM-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
+    int idx_bias = tasks_list[0].size();
+
+    for (int ii = 1; ii < tasks_list[1].size(); ii++) {
+        offset.push_back(shape[NDIM-1-tasks_list[1][ii-1][0]] * 
+                         shape[NDIM-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
+    }
+
+
     for(auto &list : tasks_list) {
         for (auto &task : list) {
             auto ii = task[0];
             auto jj = task[1];
-            double *ptr = block_mpi.data + (offset++) * 256;
+            double *ptr = block_mpi.data + offset[offset_idx++];
             fill_J_with_block(&block, shape, ii, jj, ptr);
         }
     }
@@ -262,34 +277,49 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
         std::memcpy(X.data + shape_scan[ii],
                     U[ii].data, U[ii].size * sizeof(double));
     }
+    int size_rank0 = 0;
+    int size_rank1 = 0;
+    for (int ii = 0; ii < tasks_list[0].size(); ii++) {
+        int u_ii = tasks_list[0][ii][0];
+        int u_jj = tasks_list[0][ii][1]; 
+        size_rank0 += U[u_ii].size * U[u_jj].size;
+    }
+    for (int ii = 0; ii < tasks_list[1].size(); ii++) {
+        int u_ii = tasks_list[1][ii][0];
+        int u_jj = tasks_list[1][ii][1]; 
+        size_rank1 += U[u_ii].size * U[u_jj].size;
+    }
 
     double lambda = cal_lambda(A, &X);
 
     while (iter < max_iter) {
         std::memset(J.data, 0, sizeof(double) * J.size);
-        auto start = std::chrono::system_clock::now(); 
+        // auto start = std::chrono::system_clock::now(); 
+        int store_offset = 0;
         for (int ii = 0; ii < tasks_list[rank].size(); ii++) {
             int block_ii = tasks_list[rank][ii][0];
             int block_jj = tasks_list[rank][ii][1];
-            ttvc_except_dim_mpi(A, &X, J_mpi.data+16*16*(rank_offset[rank]+ii), 
+            ttvc_except_dim_mpi(A, &X, J_mpi.data+rank_offset[rank]+store_offset, 
                             block_ii, block_jj);
-            norm_range(J_mpi.data+16*16*(rank_offset[rank]+ii), 16*16);
+            norm_range(J_mpi.data+rank_offset[rank]+store_offset,
+                       U[block_ii].size * U[block_jj].size);
+            store_offset += U[block_ii].size * U[block_jj].size;
         }
-        auto end = std::chrono::system_clock::now(); 
-		if (rank == 0) {
-            std::cout << "ttvc : " \
-            << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
-            << "ms" << std::endl; 
-        }
+        // auto end = std::chrono::system_clock::now(); 
+		// if (rank == 0) {
+            // std::cout << "ttvc : " \
+            // << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+            // << "ms" << std::endl; 
+        // }
 
-        start = std::chrono::system_clock::now();
-        MPI_Bcast(J_mpi.data, 6*256, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        MPI_Bcast(J_mpi.data+6*256, 9*256, MPI_DOUBLE, 1, MPI_COMM_WORLD);
-        end = std::chrono::system_clock::now();
+        // start = std::chrono::system_clock::now();
+        MPI_Bcast(J_mpi.data, size_rank0, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data + size_rank0, size_rank1, MPI_DOUBLE, 1, MPI_COMM_WORLD);
+        // end = std::chrono::system_clock::now();
 		//if (rank == 0) {
-            std::cout << "Bcast : " \
-            << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
-            << "ms" << std::endl; 
+            // std::cout << "Bcast : " \
+            // << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+            // << "ms" << std::endl; 
         //}
 
         refact_J(J, J_mpi, shape);

@@ -12,7 +12,7 @@ std::vector<std::vector<std::vector<int> > > tasks_list;
 std::vector<int> rank_offset;
 int size, rank;
 
-int NDIM = 6;
+int NDIM = 4;
 
 void init_mpi_vector(Tensor *A, Tensor *U) {
     offload_task(A, U);
@@ -59,20 +59,28 @@ int main(int argc, char **argv) {
     Tensor A(A_shape);
     int ndim = A.ndim;
 
-    for (int ii = 0; ii < A.size; ii++)
-        A.data[ii] = randn();
+    if (rank == 0) {
+        for (int ii = 0; ii < A.size; ii++)
+            A.data[ii] = randn();
+        MPI_Send(A.data, A.size, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);
+    } else if (rank == 1){
+        MPI_Recv(A.data, A.size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
 
     Tensor U[NDIM];
     for(int ii = 0; ii < ndim; ii++) {
         U[ii].constructor({A.shape[ndim-1-ii]});
-        for(int jj = 0; jj < U[ii].size; jj++)
-            U[ii].data[jj] = randn();
-        U[ii].norm();
+        if (rank == 0) {
+            for(int jj = 0; jj < U[ii].size; jj++)
+                U[ii].data[jj] = randn();
+            U[ii].norm();
+            MPI_Send(U[ii].data, U[ii].size, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);
+        } else if (rank == 1) {
+            MPI_Recv(U[ii].data, U[ii].size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
     }
 
-    // std::cout << "start init_mpi_vector" << std::endl;
     init_mpi_vector(&A, U);
-    // std::cout << "finish init_mpi_vector" << std::endl;
 
     std::function<void(Tensor *, Tensor *, double, uint32_t)> func = scf;
 

@@ -102,5 +102,9 @@ void offload_task(Tensor *A, Tensor *U) {
     tasks_list.push_back(task_cpu0);
     tasks_list.push_back(task_cpu1);
     rank_offset.push_back(0);
-    rank_offset.push_back(task_cpu0.size());
+    int offset = 0;
+    for (int ii = 0; ii < task_cpu0.size(); ii++) {
+        offset += U[task_cpu0[ii][0]].size * U[task_cpu0[ii][1]].size;
+    }
+    rank_offset.push_back(offset);
 }
