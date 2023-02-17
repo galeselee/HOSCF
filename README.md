@@ -21,7 +21,7 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 4 | 3735.6 |  |
 | 8 | 1925.9 |  |
 | 16 | 1106.5 |  |
-| 32(with two mpi processes) | 635.56 |   |
+| 32(with two mpi processes) | 578 |   |
 
 Reasons of scalability decrease when thread_num is 32:
 1. memory bus race
