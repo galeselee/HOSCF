@@ -2,10 +2,15 @@
 #include <functional>
 #include <omp.h>
 #include <mpi.h>
+#include <vector>
+#include <cmath>
+
 
 #include "scf.h"
 #include "common.h"
 #include "offload_task.h"
+
+#include "mkl_cblas.h"
 
 int threads = 1;
 std::vector<std::vector<std::vector<int> > > tasks_list;
@@ -19,6 +24,12 @@ void init_mpi_vector(Tensor *A, Tensor *U) {
 }
 
 int main(int argc, char **argv) {
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &size); // get num of procs
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank); // get my rank      
+    std::cout << rank << " " << size << std::endl;
+
+    init_mpi_vector();
     if (argc == 2) {
         threads = std::stoi(argv[1]);
         omp_set_num_threads(threads);
@@ -56,6 +67,7 @@ int main(int argc, char **argv) {
             A_shape.push_back(64);
         }
     } 
+
     Tensor A(A_shape);
     int ndim = A.ndim;
 
