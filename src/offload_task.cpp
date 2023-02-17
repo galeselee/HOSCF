@@ -41,11 +41,12 @@ void offload_task(Tensor *A, Tensor *U) {
             if (ii == 0) {
                 if (jj >= block_time[ii][2]) {
                     dp[ii][jj][0] = block_time[ii][2];
-                    dp[ii][jj][0] = 1;
+                    dp[ii][jj][1] = 1;
                 } else {
                     dp[ii][jj][0] = 0;
                     dp[ii][jj][1] = 0;
                 }
+                continue;
             }
 
             int val0 = dp[ii-1][jj][0];
@@ -79,16 +80,16 @@ void offload_task(Tensor *A, Tensor *U) {
     rank_offset.push_back(0);
     rank_offset.push_back(task_cpu0.size());
 
-    std::cout << "cpu0 task: " << std::endl;
-    extern int rank;
-    if (rank == 0) {
-        int total = 0;
-        for (int ii = 0; ii < task_cpu0.size(); ii++) {
-            std::cout << "ii = " << task_cpu0[ii][0] 
-                      << " jj = " << task_cpu0[ii][1]
-                      << " time = " << task_cpu0[ii][2] << std::endl;
-            total += task_cpu0[ii][2];
-        }
-        std::cout << "use time = " << total << " half time = " << half_time << std::endl;
-    }
+    // std::cout << "cpu0 task: " << std::endl;
+    // extern int rank;
+    // if (rank == 0) {
+        // int total = 0;
+        // for (int ii = 0; ii < task_cpu0.size(); ii++) {
+            // std::cout << "ii = " << task_cpu0[ii][0] 
+                    //   << " jj = " << task_cpu0[ii][1]
+                    //   << " time = " << task_cpu0[ii][2] << std::endl;
+            // total += task_cpu0[ii][2];
+        // }
+        // std::cout << "use time = " << total << " half time = " << half_time << std::endl;
+    // }
 }
