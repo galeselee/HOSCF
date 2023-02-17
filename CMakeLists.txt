@@ -17,5 +17,5 @@ include_directories(include)
 add_subdirectory(src)
 
 add_executable(${PROJECT_NAME} ${SOURCE})
-target_link_libraries(${PROJECT_NAME} src_lib)
 target_link_libraries(${PROJECT_NAME} ${MPI_C_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} src_lib)

@@ -4,9 +4,8 @@
 #include "tensor.h"
 
 extern int threads;
-void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *block_J, int dim0, int dim1);
-
-// for mpi
 void ttvc_except_dim_mpi(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1);
+
+extern int NDIM;
 
 #endif

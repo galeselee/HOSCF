@@ -9,6 +9,7 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <mpi.h>
 #include <chrono>
 
 double cal_lambda(Tensor *A, Tensor *U) {
@@ -25,58 +26,121 @@ double cal_lambda(Tensor *A, Tensor *U) {
     for (int ii = 1; ii < ndim; ii++) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
-    
+    if (NDIM == 4) {
+    #pragma omp parallel for default(shared) reduction(+:lambda)
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    lambda += A->data[idx_kk + ll] * U->data[scan_add[0]+ll] * U->data[scan_add[1]+kk]
+                                * U->data[scan_add[2]+jj] * U->data[scan_add[3]+ii];
+                }
+            }
+        }
+    } else if (NDIM == 5) {
 #pragma omp parallel for default(shared) reduction(+:lambda)
-    for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-        int ii = ij / shape[1];
-        int jj = ij % shape[1];
-        int idx_ii = ii * scan[0];
-        int idx_jj = jj * scan[1] + idx_ii;
-        for (int kk = 0; kk < shape[2]; kk++) {
-            int idx_kk = kk * scan[2] + idx_jj;
-            for (int ll = 0; ll < shape[3]; ll++) {
-                int idx_ll = ll * scan[3] + idx_kk;
-                for (int uu = 0; uu < shape[4]; uu++) {
-                    int idx_uu = uu * scan[4] + idx_ll;
-                    for (int tt = 0; tt < shape[5]; tt++) { 
-                        lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
-                                    * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
-                                    * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        lambda += A->data[idx_ll + uu] * U->data[scan_add[0]+uu] * U->data[scan_add[1]+ll]
+                                    * U->data[scan_add[2]+kk] * U->data[scan_add[3]+jj]
+                                    * U->data[scan_add[4]+ii];
+                    }
+                }
+            }
+        }
+    } else if (NDIM == 6) {
+#pragma omp parallel for default(shared) reduction(+:lambda)
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        int idx_uu = uu * scan[4] + idx_ll;
+                        for (int tt = 0; tt < shape[5]; tt++) { 
+                            lambda += A->data[idx_uu + tt] * U->data[scan_add[0]+tt] * U->data[scan_add[1]+uu]
+                                        * U->data[scan_add[2]+ll] * U->data[scan_add[3]+kk]
+                                        * U->data[scan_add[4]+jj] * U->data[scan_add[5]+ii];
+                        }
+                    }
+                }
+            }
+        }
+    } else if (NDIM == 7) {
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        int idx_uu = uu * scan[4] + idx_ll;
+                        for (int tt = 0; tt < shape[5]; tt++) { 
+                            int idx_tt = tt * scan[5] + idx_uu;
+                            for (int rr = 0; rr < shape[6]; rr++) {
+                                int idx_rr = rr + idx_tt;
+                                lambda += A->data[idx_rr]
+                                            * U->data[scan_add[0]+rr]
+                                            * U->data[scan_add[1]+tt] * U->data[scan_add[2]+uu]
+                                            * U->data[scan_add[3]+ll] * U->data[scan_add[4]+kk]
+                                            * U->data[scan_add[5]+jj] * U->data[scan_add[6]+ii];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else if (NDIM == 8) {
+    #pragma omp parallel for default(shared) reduction(+:lambda)
+        for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
+            int ii = ij / shape[1];
+            int jj = ij % shape[1];
+            int idx_ii = ii * scan[0];
+            int idx_jj = jj * scan[1] + idx_ii;
+            for (int kk = 0; kk < shape[2]; kk++) {
+                int idx_kk = kk * scan[2] + idx_jj;
+                for (int ll = 0; ll < shape[3]; ll++) {
+                    int idx_ll = ll * scan[3] + idx_kk;
+                    for (int uu = 0; uu < shape[4]; uu++) {
+                        int idx_uu = uu * scan[4] + idx_ll;
+                        for (int tt = 0; tt < shape[5]; tt++) { 
+                            int idx_tt = tt * scan[5] + idx_uu;
+                            for (int rr = 0; rr < shape[6]; rr++) {
+                                int idx_rr = rr * scan[6] + idx_tt;
+                                for (int ee = 0; ee < shape[7]; ee++) {
+                                    int idx_ee = ee + idx_rr;
+                                    lambda += A->data[idx_ee]
+                                                * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
+                                                * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
+                                                * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
+                                                * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
-// #pragma omp parallel for default(shared) reduction(+:lambda)
-//     for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-//         int ii = ij / shape[1];
-//         int jj = ij % shape[1];
-//         int idx_ii = ii * scan[0];
-//         int idx_jj = jj * scan[1] + idx_ii;
-//         for (int kk = 0; kk < shape[2]; kk++) {
-//             int idx_kk = kk * scan[2] + idx_jj;
-//             for (int ll = 0; ll < shape[3]; ll++) {
-//                 int idx_ll = ll * scan[3] + idx_kk;
-//                 for (int uu = 0; uu < shape[4]; uu++) {
-//                     int idx_uu = uu * scan[4] + idx_ll;
-//                     for (int tt = 0; tt < shape[5]; tt++) { 
-//                         int idx_tt = tt * scan[5] + idx_uu;
-//                         for (int rr = 0; rr < shape[6]; rr++) {
-//                             int idx_rr = rr * scan[6] + idx_tt;
-//                             for (int ee = 0; ee < shape[7]; ee++) {
-//                                 int idx_ee = ee  + idx_rr;
-//                                 lambda += A->data[idx_ee]
-//                                             * U->data[scan_add[0]+ee] * U->data[scan_add[1]+rr]
-//                                             * U->data[scan_add[2]+tt] * U->data[scan_add[3]+uu]
-//                                             * U->data[scan_add[4]+ll] * U->data[scan_add[5]+kk]
-//                                             * U->data[scan_add[6]+jj] * U->data[scan_add[7]+ii];
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
     return lambda;
 }
 
@@ -169,12 +233,27 @@ void norm_range(double *ptr, int len) {
 }
 
 void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
-    int offset = 0;
+    std::vector<int> offset{0};
+    int offset_idx = 0;
+    for(int ii = 1; ii < tasks_list[0].size(); ii++) {
+        offset.push_back(shape[NDIM-1-tasks_list[0][ii-1][0]] * 
+                         shape[NDIM-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
+    }
+    offset.push_back(shape[NDIM-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
+                     shape[NDIM-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
+    int idx_bias = tasks_list[0].size();
+
+    for (int ii = 1; ii < tasks_list[1].size(); ii++) {
+        offset.push_back(shape[NDIM-1-tasks_list[1][ii-1][0]] * 
+                         shape[NDIM-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
+    }
+
+
     for(auto &list : tasks_list) {
         for (auto &task : list) {
             auto ii = task[0];
             auto jj = task[1];
-            double *ptr = block_mpi.data + (offset++) * 256;
+            double *ptr = block_mpi.data + offset[offset_idx++];
             fill_J_with_block(&block, shape, ii, jj, ptr);
         }
     }
@@ -200,24 +279,53 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
         std::memcpy(X.data + shape_scan[ii],
                     U[ii].data, U[ii].size * sizeof(double));
     }
+    int size_rank0 = 0;
+    int size_rank1 = 0;
+    for (int ii = 0; ii < tasks_list[0].size(); ii++) {
+        int u_ii = tasks_list[0][ii][0];
+        int u_jj = tasks_list[0][ii][1]; 
+        size_rank0 += U[u_ii].size * U[u_jj].size;
+    }
+    for (int ii = 0; ii < tasks_list[1].size(); ii++) {
+        int u_ii = tasks_list[1][ii][0];
+        int u_jj = tasks_list[1][ii][1]; 
+        size_rank1 += U[u_ii].size * U[u_jj].size;
+    }
 
     double lambda = cal_lambda(A, &X);
 
     while (iter < max_iter) {
 		auto start = std::chrono::system_clock::now(); 
         std::memset(J.data, 0, sizeof(double) * J.size);
-        for (int ii = 0; ii < task_lists.size(); ii++) {
-            int block_ii = task_lists[ii][0];
-            int block_jj = task_lists[ii][1];
-            Tensor block_J;
-            ttvc_except_dim(A, &X, &block_J, block_ii, block_jj);
-            block_J.norm();
-            fill_J_with_block(&J, shape, block_ii, block_jj, &block_J);
+        // auto start = std::chrono::system_clock::now(); 
+        int store_offset = 0;
+        for (int ii = 0; ii < tasks_list[rank].size(); ii++) {
+            int block_ii = tasks_list[rank][ii][0];
+            int block_jj = tasks_list[rank][ii][1];
+            ttvc_except_dim_mpi(A, &X, J_mpi.data+rank_offset[rank]+store_offset, 
+                            block_ii, block_jj);
+            norm_range(J_mpi.data+rank_offset[rank]+store_offset,
+                       U[block_ii].size * U[block_jj].size);
+            store_offset += U[block_ii].size * U[block_jj].size;
         }
-		auto end = std::chrono::system_clock::now(); 
-		std::cout << "ttvc : " \
-	         << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
-	         << "ms" << std::endl;
+        // auto end = std::chrono::system_clock::now(); 
+		// if (rank == 0) {
+            // std::cout << "ttvc : " \
+            // << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+            // << "ms" << std::endl; 
+        // }
+
+        // start = std::chrono::system_clock::now();
+        MPI_Bcast(J_mpi.data, size_rank0, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(J_mpi.data + size_rank0, size_rank1, MPI_DOUBLE, 1, MPI_COMM_WORLD);
+        // end = std::chrono::system_clock::now();
+		//if (rank == 0) {
+            // std::cout << "Bcast : " \
+            // << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
+            // << "ms" << std::endl; 
+        //}
+
+        refact_J(J, J_mpi, shape);
 
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
