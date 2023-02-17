@@ -23,10 +23,6 @@ scale: 32 x 32 x 32 x 32 x 32 x 32
 | 16 | 1106.5 |  |
 | 32(with two mpi processes) | 578 |   |
 
-Reasons of scalability decrease when thread_num is 32:
-1. memory bus race
-2. The num(1024) of parallel task is a little small
-
 env
 ```
 spack
