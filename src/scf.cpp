@@ -1,6 +1,7 @@
 #include "scf.h"
 #include "ttvc.h"
 #include "utils.h"
+#include <omp.h>
 
 #include <cstring>
 #include <string>
@@ -196,6 +197,7 @@ void fill_J_with_block(Tensor *J, vint shapeA, int x, int y, double *block) {
 extern "C" {
 	void dsyev_(const char*, const char*, const  int *, double* ,const int *, double *, double *, const int*, int *);
 }
+
 void svd_solve(Tensor *J, Tensor *eigvec, double &eig) {
     int n = J->shape[0];
     int lda = n;
@@ -293,6 +295,7 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     double lambda = cal_lambda(A, &X);
 
     while (iter < max_iter) {
+		auto start = std::chrono::system_clock::now(); 
         std::memset(J.data, 0, sizeof(double) * J.size);
         // auto start = std::chrono::system_clock::now(); 
         int store_offset = 0;
