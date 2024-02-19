@@ -15,6 +15,8 @@
 #include "mkl_lapacke.h"
 #include "omp.h"
 #include "mkl.h"
+#include "cmdline.h"
+using namespace std;
 
 std::chrono::system_clock::time_point tnow() {
     return std::chrono::system_clock::now();
@@ -166,16 +168,19 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
 }
 
 int main(int argc, char **argv) {
-	if (argc < 2) {
-		std::cout << "INFO : use default omp num threads 8" << std::endl;
-		omp_set_num_threads(8);
-	}
-	else {
-		omp_set_num_threads(std::stoi(argv[1]));
-	}
+    cmdline::parser p;
+    p.add<int>("ndim", 'n', "Number of dim", false, 6);
+    p.add<int>("threads", 't', "num threads in omp", false, 8);
+    p.add("help", 0, "print this message");
+
+    omp_set_num_threads(p.get<int>("threads"));
+
+    cout << "[INFO] OMP set num threads num " << p.get<int>("threads") << std::endl;
+
+    int ndim = p.get<int>("ndim");
 
     vint shapeA;
-    for (int ii = 0; ii < 6; ii++) {
+    for (int ii = 0; ii < ndim; ii++) {
         shapeA.push_back(16);
     }
 

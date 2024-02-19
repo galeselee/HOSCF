@@ -8,6 +8,8 @@ SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Ofast -Wall")
 set(cxx17 "-std=c++17")
 
+include_directories(../include)
+
 add_executable(run_als ${SOURCE})
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("${cxx17}" COMPILER_SUPPORTS_CXX17)

@@ -9,6 +9,7 @@
 #include "scf.h"
 #include "common.h"
 #include "offload_task.h"
+#include "cmdline.h"
 
 #include "mkl_cblas.h"
 
