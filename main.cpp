@@ -30,7 +30,6 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank); // get my rank      
     std::cout << rank << " " << size << std::endl;
 
-    init_mpi_vector();
     if (argc == 2) {
         threads = std::stoi(argv[1]);
         omp_set_num_threads(threads);
@@ -39,9 +38,6 @@ int main(int argc, char **argv) {
         omp_set_num_threads(threads);
         NDIM = std::stoi(argv[1]);
     }
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &size); // get num of procs
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank); // get my rank 
 
     vint A_shape;
     if (NDIM == 8) {

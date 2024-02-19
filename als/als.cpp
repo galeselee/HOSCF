@@ -184,7 +184,6 @@ int main(int argc, char **argv) {
         shapeA.push_back(16);
     }
 
-    int ndim = shapeA.size();
     Tensor A;
     for (int ii = 0; ii < ndim; ii++) {
         A.shape.push_back(shapeA[ii]);
