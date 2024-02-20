@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.9)
 project(run_als)
 
+find_package(Torch REQUIRED)
+
 set(SOURCE als.cpp)
 SET(CMAKE_BUILD_TYPE "Relese")
 #SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -Ofast -Wall -g2 -ggdb")
-SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall")
+SET(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -Ofast -Wall ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -Ofast -Wall")
 set(cxx17 "-std=c++17")
 
@@ -24,6 +27,7 @@ find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${BLAS_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${TORCH_LIBRARIES})
 
 find_package(OpenMP REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")

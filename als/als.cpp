@@ -15,6 +15,8 @@
 #include "mkl_lapacke.h"
 #include "omp.h"
 #include "mkl.h"
+
+#include <torch/torch.h>
 #include "cmdline.h"
 using namespace std;
 
@@ -45,8 +47,7 @@ double randn() {
     return u * c;
 }
 
-typedef std::vector<u32> vuint;
-typedef std::vector<i32> vint;
+typedef std::vector<long int> vint;
 struct Tensor {
     vint shape;
     u32 size;
@@ -63,85 +64,50 @@ double fnorm_ptr(double *ptr, int size) {
 }
 
 void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *ret, int dim) {
-    auto shape = A->shape;
-    int ndim = A->ndim;
-    int adim = ndim - 1 - dim;
-    ret->size = A->shape[adim];
+    ret->size = A->shape[A->ndim-1-dim];
     ret->ndim = 1;
     ret->shape = {ret->size};
     ret->data = (double *)std::malloc(sizeof(double) * ret->size);
-    std::memset(ret->data, 0, sizeof(double) * ret->size);
 
-    int ttvc_dim[5];
-    int cnt = 0;
-    for (int ii = 0; ii < ndim; ii++) {
-        if (ii == adim) continue;
-        ttvc_dim[cnt++] = ii;
-    }
-    int tensor_stride[ndim];
-    tensor_stride[ndim-1] = 1;
-    for (int ii = ndim - 2; ii >= 0; ii--) {
-        tensor_stride[ii] = tensor_stride[ii+1] * shape[ii+1];
+    vector<torch::Tensor> ttvc_list(A->ndim);
+    at::IntArrayRef A_shape_torch(&(A->shape[0]), A->ndim);
+    ttvc_list[0] = torch::from_blob(A->data, A_shape_torch,torch::kFloat64);
+    string raw_str = "abcdefghijklmn";
+    string einsum_str = raw_str.substr(0, A->ndim);
+    for (int ii = 0; ii < A->ndim; ii++) {
+        if (dim == ii) continue;
+        einsum_str += "," + einsum_str.substr(A->ndim-ii-1, 1);
     }
 
-#pragma omp parallel for default(shared)
-    for (int ii = 0; ii < shape[adim]; ii++) {
-        int idx_ii = ii * tensor_stride[adim];
-        for (int jj = 0; jj < shape[ttvc_dim[0]]; jj++) {
-            int idx_jj = jj * tensor_stride[ttvc_dim[0]] + idx_ii;
-            for (int kk = 0; kk < shape[ttvc_dim[1]]; kk++) {
-                int idx_kk = kk * tensor_stride[ttvc_dim[1]] + idx_jj;
-                for (int ll = 0; ll < shape[ttvc_dim[2]]; ll++) {
-                    int idx_ll = ll * tensor_stride[ttvc_dim[2]] + idx_kk;
-                    for (int mm = 0; mm < shape[ttvc_dim[3]]; mm++) {
-                        int idx_mm = mm * tensor_stride[ttvc_dim[3]] + idx_ll;
-                        for (int nn = 0; nn < shape[ttvc_dim[4]]; nn++) {
-                            ret->data[ii] += A->data[idx_mm + nn * tensor_stride[ttvc_dim[4]]] *
-                                       U[ndim-1-ttvc_dim[0]].data[jj] *
-                                       U[ndim-1-ttvc_dim[1]].data[kk] *
-                                       U[ndim-1-ttvc_dim[2]].data[ll] *
-                                       U[ndim-1-ttvc_dim[3]].data[mm] *
-                                       U[ndim-1-ttvc_dim[4]].data[nn];
-                        }
-                    }
-                }
-            }
-        }
+    for (int ii = 0; ii < dim; ii++) {
+        at::IntArrayRef U_shape_torch(&(U[ii].shape[0]), U[ii].ndim);
+        ttvc_list[ii+1] = torch::from_blob(U[ii].data, U_shape_torch,torch::kFloat64);
     }
+    for (int ii = dim+1; ii < A->ndim; ii++) {
+        at::IntArrayRef U_shape_torch(&(U[ii].shape[0]), U[ii].ndim);
+        ttvc_list[ii] = torch::from_blob(U[ii].data, U_shape_torch,torch::kFloat64);
+    }
+    auto ttvc_ret = torch::einsum(einsum_str, ttvc_list);
+    memcpy(ret->data, ttvc_ret.data_ptr(), ret->size * sizeof(double));
 }
 
 
 void ttvc(Tensor *A, Tensor *U, double *ret) {
-    vint shape = A->shape;
-    int ndim = A->ndim;
-    ret[0] = 0.0f;
-    int tensor_stride[ndim];
-    tensor_stride[ndim-1] = 1;
-    for (int ii = ndim -2; ii >= 0; ii--) {
-        tensor_stride[ii] = tensor_stride[ii+1] * shape[ii+1];
+    vector<torch::Tensor> ttvc_list(A->ndim+1);
+    at::IntArrayRef A_shape_torch(&(A->shape[0]), A->ndim);
+    ttvc_list[0] = torch::from_blob(A->data, A_shape_torch,torch::kFloat64);
+    string raw_str = "abcdefghijklmn";
+    string einsum_str = raw_str.substr(0, A->ndim);
+    for (int ii = 0; ii < A->ndim; ii++) {
+        einsum_str += "," + einsum_str.substr(A->ndim-ii-1, 1);
     }
 
-#pragma omp parallel for default(shared) reduction(+:ret[0])
-    for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
-        int ii = ij / shape[1];
-        int jj = ij % shape[1];
-        int idx_jj = jj * tensor_stride[1] + ii * tensor_stride[0];
-        for (int kk = 0; kk < shape[2]; kk++) {
-            int idx_kk = kk * tensor_stride[2] + idx_jj;
-            for (int ll = 0; ll < shape[3]; ll++) {
-                int idx_ll = ll * tensor_stride[3] + idx_kk;
-                for (int mm = 0; mm < shape[4]; mm++) {
-                    int idx_mm = mm * tensor_stride[4] + idx_ll;
-                    for (int nn = 0; nn < shape[5]; nn++) {
-                        ret[0] += A->data[idx_mm + nn * tensor_stride[5]] * 
-                                U[5].data[ii] * U[4].data[jj] *
-                                U[3].data[kk] * U[2].data[ll] *
-                                U[1].data[mm] * U[0].data[nn];
-                    }
-                }
-            }
-        }
+    for (int ii = 0; ii < A->ndim; ii++) {
+        at::IntArrayRef U_shape_torch(&(U[ii].shape[0]), U[ii].ndim);
+        ttvc_list[ii+1] = torch::from_blob(U[ii].data, U_shape_torch,torch::kFloat64);
     }
+    auto ttvc_ret = torch::einsum(einsum_str, ttvc_list);
+    ret[0] = ((double*)ttvc_ret.data_ptr())[0];
 }
 
 void Nmul_ptr(double *ptr, double num, int size) {
@@ -158,7 +124,8 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
     int iter = 0;
     double lambda = 0.0;
     double AF = fnorm_ptr(A->data, A->size);
-    while (std::abs(residual - residual_last) > tol && iter < max_iter) {
+    // while (std::abs(residual - residual_last) > tol && iter < max_iter) {
+    while (iter < max_iter) {
         for (int ii = 0; ii < ndim; ii++) {
             Tensor ret;
             ttvc_except_dim(A, U, &ret, ii);
@@ -177,21 +144,22 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
 int main(int argc, char **argv) {
     cmdline::parser p;
     p.add<int>("ndim", 'n', "Num of dim", false, 6);
-    p.add<int>("threads", 't', "Num threads in omp", false, 8);
+    // p.add<int>("threads", 't', "Num threads in omp", false, 8);
+    // using taskset to control the num of core
     p.add<int>("shape", 's', "Shape of tensor. The tensor size will be ndim x shape(only support all dim size equally)", false, 16);
-    p.add<int>("repeat", 'r', "Repeat time ", false, 10);
+    p.add<int>("repeat", 'r', "Repeat time ", false, 1);
     p.add("help", 0, "print this message");
     p.parse_check(argc, argv);
 
-    u32 omp_threads_num = p.get<int>("threads");
+    // u32 omp_threads_num = p.get<int>("threads");
     u32 ndim = p.get<int>("ndim");
     u32 size_one_dim = p.get<int>("shape");
     u32 repeat_num = p.get<int>("repeat");
 
-    omp_set_num_threads(omp_threads_num);
+    // omp_set_num_threads(omp_threads_num);
 
     cout << "[CONFIG] Number dim " << ndim << endl;
-    cout << "[CONFIG] OMP set num threads num " << omp_threads_num << std::endl;
+    // cout << "[CONFIG] OMP set num threads num " << omp_threads_num << std::endl;
     cout << "[CONFIG] Shape " << size_one_dim << std::endl;
 
     vint shapeA;
