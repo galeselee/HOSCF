@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <chrono>
 #include <string>
+#include <ATen/ATen.h>
+#include <torch/torch.h>
 
 
 #include "scf.h"
@@ -39,7 +41,7 @@ int main(int argc, char **argv) {
 
     cmdline::parser p;
     p.add<int>("ndim", 'n', "Num of dim", false, 6);
-    // p.add<int>("threads", 't', "Num threads in omp", false, 8);
+    p.add<int>("threads", 't', "Num threads in omp", false, 8);
     // using taskset to control the num of core
     p.add<int>("shape", 's', "Shape of tensor. The tensor size will be ndim x shape(only support all dim size equally)", false, 16);
     p.add<int>("repeat", 'r', "Repeat time ", false, 1);
@@ -50,6 +52,9 @@ int main(int argc, char **argv) {
     u32 ndim = p.get<int>("ndim");
     u32 size_one_dim = p.get<int>("shape");
     u32 repeat_num = p.get<int>("repeat");
+    u32 threads = p.get<int>("threads");
+    omp_set_num_threads(threads);
+    torch::set_num_threads(threads);
     f32 tol = p.get<float>("tol");
 
     printm("[CONFIG]", "Number dim " + std::to_string(ndim), mpi_rank);

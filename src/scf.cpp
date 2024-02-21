@@ -13,6 +13,7 @@
 #include <chrono>
 
 #include <torch/torch.h>
+#include <ATen/ATen.h>
 
 double cal_lambda(Tensor *A, Tensor *U) {
     vint shape = A->shape;
@@ -209,7 +210,7 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
 
-        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
+        // std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
 
         svd_solve(&J, &X, lambda);
 
