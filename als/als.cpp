@@ -64,7 +64,10 @@ double fnorm_ptr(double *ptr, int size) {
 }
 
 void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *ret, int dim) {
-    ret->size = A->shape[A->ndim-1-dim];
+    int adim = A->ndim-1-dim;
+    int u_size = A->ndim;
+
+    ret->size = A->shape[adim];
     ret->ndim = 1;
     ret->shape = {ret->size};
     ret->data = (double *)std::malloc(sizeof(double) * ret->size);
@@ -74,16 +77,23 @@ void ttvc_except_dim(Tensor *A, Tensor *U, Tensor *ret, int dim) {
     ttvc_list[0] = torch::from_blob(A->data, A_shape_torch,torch::kFloat64);
     string raw_str = "abcdefghijklmn";
     string einsum_str = raw_str.substr(0, A->ndim);
-    for (int ii = 0; ii < A->ndim; ii++) {
-        if (dim == ii) continue;
+    string einsum_ret_str = "";
+
+    for (int ii = 0; ii < u_size; ii++) {
+        if (dim == ii) {
+            einsum_ret_str += "->" + einsum_str.substr(adim, 1);
+            continue;
+        }
         einsum_str += "," + einsum_str.substr(A->ndim-ii-1, 1);
     }
+
+    einsum_str += einsum_ret_str;
 
     for (int ii = 0; ii < dim; ii++) {
         at::IntArrayRef U_shape_torch(&(U[ii].shape[0]), U[ii].ndim);
         ttvc_list[ii+1] = torch::from_blob(U[ii].data, U_shape_torch,torch::kFloat64);
     }
-    for (int ii = dim+1; ii < A->ndim; ii++) {
+    for (int ii = dim+1; ii < u_size; ii++) {
         at::IntArrayRef U_shape_torch(&(U[ii].shape[0]), U[ii].ndim);
         ttvc_list[ii] = torch::from_blob(U[ii].data, U_shape_torch,torch::kFloat64);
     }
@@ -136,8 +146,8 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
         residual_last = residual;
         residual = std::sqrt(1 - (lambda * lambda) / (AF * AF));
         iter ++;
-        // std::cout << "iter = " << iter << ", lambda = " << lambda << ", residual = " << residual
-                //  << ", error_delta = " << std::abs(residual - residual_last) << std::endl;
+        std::cout << "iter = " << iter << ", lambda = " << lambda << ", residual = " << residual
+                 << ", error_delta = " << std::abs(residual - residual_last) << std::endl;
     }
 }
 
