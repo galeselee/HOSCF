@@ -26,7 +26,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
     for (int ii = 1; ii < ndim; ii++) {
         scan_add[ii] = scan_add[ii-1] + shape[A->ndim-ii];
     }
-    if (NDIM == 4) {
+    if (ndim == 4) {
     #pragma omp parallel for default(shared) reduction(+:lambda)
         for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
             int ii = ij / shape[1];
@@ -41,7 +41,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
                 }
             }
         }
-    } else if (NDIM == 5) {
+    } else if (ndim == 5) {
 #pragma omp parallel for default(shared) reduction(+:lambda)
         for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
             int ii = ij / shape[1];
@@ -60,7 +60,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
                 }
             }
         }
-    } else if (NDIM == 6) {
+    } else if (ndim == 6) {
 #pragma omp parallel for default(shared) reduction(+:lambda)
         for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
             int ii = ij / shape[1];
@@ -82,7 +82,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
                 }
             }
         }
-    } else if (NDIM == 7) {
+    } else if (ndim == 7) {
         for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
             int ii = ij / shape[1];
             int jj = ij % shape[1];
@@ -109,7 +109,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
                 }
             }
         }
-    } else if (NDIM == 8) {
+    } else if (ndim == 8) {
     #pragma omp parallel for default(shared) reduction(+:lambda)
         for (int ij = 0; ij < shape[0] * shape[1]; ij++) {
             int ii = ij / shape[1];
@@ -141,7 +141,7 @@ double cal_lambda(Tensor *A, Tensor *U) {
             }
         }
     }
-    return lambda;
+    return lambda; 
 }
 
 double cal_res(Tensor *J, Tensor *X, double lambda) {
@@ -233,19 +233,20 @@ void norm_range(double *ptr, int len) {
 }
 
 void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
+    int ndim = shape.size();
     std::vector<int> offset{0};
     int offset_idx = 0;
     for(int ii = 1; ii < tasks_list[0].size(); ii++) {
-        offset.push_back(shape[NDIM-1-tasks_list[0][ii-1][0]] * 
-                         shape[NDIM-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
+        offset.push_back(shape[ndim-1-tasks_list[0][ii-1][0]] * 
+                         shape[ndim-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
     }
-    offset.push_back(shape[NDIM-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
-                     shape[NDIM-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
+    offset.push_back(shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
+                     shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
     int idx_bias = tasks_list[0].size();
 
     for (int ii = 1; ii < tasks_list[1].size(); ii++) {
-        offset.push_back(shape[NDIM-1-tasks_list[1][ii-1][0]] * 
-                         shape[NDIM-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
+        offset.push_back(shape[ndim-1-tasks_list[1][ii-1][0]] * 
+                         shape[ndim-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
     }
 
 
@@ -260,13 +261,13 @@ void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
 }
 
 void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
-    int n = A->ndim;
+    int ndim = A->ndim;
     vint shape = A->shape;
     int iter = 0;
     int n_x = 0;
-    int shape_scan[n+1];
+    int shape_scan[ndim+1];
     shape_scan[0] = 0;
-    for (int ii = 0; ii < n; ii++) {
+    for (int ii = 0; ii < ndim; ii++) {
         n_x += U[ii].size;
         shape_scan[ii+1] = n_x;
     }
@@ -275,10 +276,11 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
     Tensor J_mpi({n_x, n_x});
     Tensor X({n_x});
 
-    for (int ii = 0; ii < n; ii++) {
+    for (int ii = 0; ii < ndim; ii++) {
         std::memcpy(X.data + shape_scan[ii],
                     U[ii].data, U[ii].size * sizeof(double));
     }
+
     int size_rank0 = 0;
     int size_rank1 = 0;
     for (int ii = 0; ii < tasks_list[0].size(); ii++) {
@@ -292,60 +294,43 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
         size_rank1 += U[u_ii].size * U[u_jj].size;
     }
 
-    double lambda = cal_lambda(A, &X);
+    double lambda = cal_lambda(A, U);
 
     while (iter < max_iter) {
-		auto start = std::chrono::system_clock::now(); 
         std::memset(J.data, 0, sizeof(double) * J.size);
-        // auto start = std::chrono::system_clock::now(); 
         int store_offset = 0;
-        for (int ii = 0; ii < tasks_list[rank].size(); ii++) {
-            int block_ii = tasks_list[rank][ii][0];
-            int block_jj = tasks_list[rank][ii][1];
-            ttvc_except_dim_mpi(A, &X, J_mpi.data+rank_offset[rank]+store_offset, 
+        for (int ii = 0; ii < tasks_list[mpi_rank].size(); ii++) {
+            int block_ii = tasks_list[mpi_rank][ii][0];
+            int block_jj = tasks_list[mpi_rank][ii][1];
+            ttvc_except_dim_mpi(A, &X, J_mpi.data+rank_offset[mpi_rank]+store_offset, 
                             block_ii, block_jj);
-            norm_range(J_mpi.data+rank_offset[rank]+store_offset,
+            norm_range(J_mpi.data+rank_offset[mpi_rank]+store_offset,
                        U[block_ii].size * U[block_jj].size);
             store_offset += U[block_ii].size * U[block_jj].size;
         }
-        // auto end = std::chrono::system_clock::now(); 
-		// if (rank == 0) {
-            // std::cout << "ttvc : " \
-            // << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
-            // << "ms" << std::endl; 
-        // }
-
-        // start = std::chrono::system_clock::now();
         MPI_Bcast(J_mpi.data, size_rank0, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(J_mpi.data + size_rank0, size_rank1, MPI_DOUBLE, 1, MPI_COMM_WORLD);
-        // end = std::chrono::system_clock::now();
-		//if (rank == 0) {
-            // std::cout << "Bcast : " \
-            // << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() / 1000.0
-            // << "ms" << std::endl; 
-        //}
 
         refact_J(J, J_mpi, shape);
 
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
 
-        if (rank == 0)
-            std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
+        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
 
         svd_solve(&J, &X, lambda);
 
 #pragma omp parallel for default(shared)
-        for (int ii = 0; ii < n; ii++) {
+        for (int ii = 0; ii < ndim; ii++) {
 			X.nmul_range(shape_scan[ii], U[ii].size, 1/X.fnorm_range(shape_scan[ii], U[ii].size));
         }
         iter++;
     }
 
 #pragma omp parallel for
-    for (int ii = n-1; ii >= 0; ii--) {
+    for (int ii = ndim-1; ii >= 0; ii--) {
         std::memcpy(U[ii].data, X.data + shape_scan[ii],
-                    shape[n-1-ii] * sizeof(double));
+                    shape[ndim-1-ii] * sizeof(double));
     }
     return ;
 }

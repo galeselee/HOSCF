@@ -9,7 +9,7 @@
 #include "offload_task.h"
 
 void offload_task(Tensor *A, Tensor *U) {
-    extern int rank;
+    extern int mpi_rank;
     int ndim = A->ndim;
     std::vector<std::vector<int>> block_time;
     int block_num = 0;
@@ -20,7 +20,7 @@ void offload_task(Tensor *A, Tensor *U) {
     int idx_buffer = 0;
 
     int total_time = 0;
-    if (rank == 0) {
+    if (mpi_rank == 0) {
         for (int ii = 0; ii < ndim - 1; ii++) {
             for (int jj = ii+1; jj < ndim; jj++) {
                 Tensor block({U[ii].size, U[jj].size});
@@ -41,7 +41,7 @@ void offload_task(Tensor *A, Tensor *U) {
         }
         MPI_Send(ttvc_time_buffer, block_num * 3, MPI_INT, 1, 0, MPI_COMM_WORLD);
     } else {
-        if (rank != 1) {
+        if (mpi_rank != 1) {
             std::cout << "Only support 2 processes" << std::endl;
             exit(1);
         }

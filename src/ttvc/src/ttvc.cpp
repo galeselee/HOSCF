@@ -370,7 +370,8 @@ void ttvc_except_dim_8(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1
 }
 
 void ttvc_except_dim_mpi(Tensor *A, Tensor *U, double *block_J, int dim0, int dim1) {
-    switch (NDIM)
+    int ndim = A->ndim;
+    switch (ndim)
     {
     case 4:
         ttvc_except_dim_4(A, U, block_J, dim0, dim1);
