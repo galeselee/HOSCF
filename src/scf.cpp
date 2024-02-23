@@ -240,27 +240,11 @@ void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
     int offset_base = 0;
 
     for (int ii = 0; ii < mpi_size; ii++ ) {
-        offset.push_back(offset_base);
-        for (int jj = 1; jj < tasks_list[ii].size(); jj++) {
-            offset_base += shape[ndim-1-tasks_list[ii][jj-1][0]] * shape[ndim-1-tasks_list[ii][jj-1][1]];
+        for (int jj = 0; jj < tasks_list[ii].size(); jj++) {
             offset.push_back(offset_base);
+            offset_base += shape[ndim-1-tasks_list[ii][jj][0]] * shape[ndim-1-tasks_list[ii][jj][1]];
         }
     }
-
-
-    // for(int ii = 1; ii <= tasks_list[0].size(); ii++) {
-        // offset.push_back(shape[ndim-1-tasks_list[0][ii-1][0]] * 
-                        //  shape[ndim-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
-    // }
-    // offset.push_back(shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
-                    //  shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
-    // int idx_bias = tasks_list[0].size();
-// 
-    // for (int ii = 1; ii < tasks_list[1].size(); ii++) {
-        // offset.push_back(shape[ndim-1-tasks_list[1][ii-1][0]] * 
-                        //  shape[ndim-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
-    // }
-
 
     for(auto &list : tasks_list) {
         for (auto &task : list) {
@@ -336,15 +320,15 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
 
-        if (mpi_rank == 0)
-        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
-
         svd_solve(&J, &X, lambda);
 
 #pragma omp parallel for default(shared)
         for (int ii = 0; ii < ndim; ii++) {
 			X.nmul_range(shape_scan[ii], U[ii].size, 1/X.fnorm_range(shape_scan[ii], U[ii].size));
         }
+        if (mpi_rank == 0)
+        std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
+
         iter++;
     }
 
