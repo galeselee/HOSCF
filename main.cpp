@@ -67,10 +67,10 @@ int main(int argc, char **argv) {
     if (mpi_rank == 0) {
         for (int ii = 0; ii < A.size; ii++)
             A.data[ii] = randn();
-        MPI_Send(A.data, A.size, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);
-    } else if (mpi_rank == 1) {
-        MPI_Recv(A.data, A.size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Bcast(A.data, A.size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     Tensor rank_one_tensor_list[ndim];
     Tensor rank_one_tensor_list_bak[ndim];
@@ -82,10 +82,9 @@ int main(int argc, char **argv) {
                 rank_one_tensor_list_bak[ii].data[jj] = randn();
             }
             rank_one_tensor_list_bak[ii].norm();
-            MPI_Send(rank_one_tensor_list_bak[ii].data, rank_one_tensor_list_bak[ii].size, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD);
-        } else if (mpi_rank == 1) {
-            MPI_Recv(rank_one_tensor_list_bak[ii].data, rank_one_tensor_list_bak[ii].size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
+        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Bcast(rank_one_tensor_list_bak[ii].data, rank_one_tensor_list_bak[ii].size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
 
     init_mpi_vector(&A, rank_one_tensor_list_bak);

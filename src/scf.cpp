@@ -234,20 +234,32 @@ void norm_range(double *ptr, int len) {
 
 void refact_J(Tensor &block, Tensor &block_mpi, vint shape) {
     int ndim = shape.size();
-    std::vector<int> offset{0};
+    std::vector<int> offset;
     int offset_idx = 0;
-    for(int ii = 1; ii < tasks_list[0].size(); ii++) {
-        offset.push_back(shape[ndim-1-tasks_list[0][ii-1][0]] * 
-                         shape[ndim-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
-    }
-    offset.push_back(shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
-                     shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
-    int idx_bias = tasks_list[0].size();
 
-    for (int ii = 1; ii < tasks_list[1].size(); ii++) {
-        offset.push_back(shape[ndim-1-tasks_list[1][ii-1][0]] * 
-                         shape[ndim-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
+    int offset_base = 0;
+
+    for (int ii = 0; ii < mpi_size; ii++ ) {
+        offset.push_back(offset_base);
+        for (int jj = 1; jj < tasks_list[ii].size(); jj++) {
+            offset_base += shape[ndim-1-tasks_list[ii][jj-1][0]] * shape[ndim-1-tasks_list[ii][jj-1][1]];
+            offset.push_back(offset_base);
+        }
     }
+
+
+    // for(int ii = 1; ii <= tasks_list[0].size(); ii++) {
+        // offset.push_back(shape[ndim-1-tasks_list[0][ii-1][0]] * 
+                        //  shape[ndim-1-tasks_list[0][ii-1][1]] + offset[ii-1]);
+    // }
+    // offset.push_back(shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][0]] * 
+                    //  shape[ndim-1-tasks_list[0][tasks_list[0].size()-1][1]] + offset[tasks_list[0].size()-1]);
+    // int idx_bias = tasks_list[0].size();
+// 
+    // for (int ii = 1; ii < tasks_list[1].size(); ii++) {
+        // offset.push_back(shape[ndim-1-tasks_list[1][ii-1][0]] * 
+                        //  shape[ndim-1-tasks_list[1][ii-1][1]] + offset[ii-1+idx_bias]);
+    // }
 
 
     for(auto &list : tasks_list) {
@@ -281,17 +293,18 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
                     U[ii].data, U[ii].size * sizeof(double));
     }
 
-    int size_rank0 = 0;
-    int size_rank1 = 0;
-    for (int ii = 0; ii < tasks_list[0].size(); ii++) {
-        int u_ii = tasks_list[0][ii][0];
-        int u_jj = tasks_list[0][ii][1]; 
-        size_rank0 += U[u_ii].size * U[u_jj].size;
-    }
-    for (int ii = 0; ii < tasks_list[1].size(); ii++) {
-        int u_ii = tasks_list[1][ii][0];
-        int u_jj = tasks_list[1][ii][1]; 
-        size_rank1 += U[u_ii].size * U[u_jj].size;
+    int *size_rank = (int *)malloc(sizeof(int)* mpi_size);
+    memset(size_rank, 0, mpi_size* sizeof(int));
+
+    for (int ii = 0; ii < mpi_size; ii++) {
+        for (int jj = 0; jj < tasks_list[ii].size(); jj++) {
+            size_rank[ii] += U[tasks_list[ii][jj][0]].size * U[tasks_list[ii][jj][1]].size;
+            // if (mpi_rank == 0) {
+            //     std::cout << "tasks_list[ii][jj][0]" << tasks_list[ii][jj][0] << " " << tasks_list[ii][jj][1] << std::endl;
+            //     std::cout << "size_rank[ii] = " << size_rank[ii] << std::endl;
+            // }
+        }
+        // std::cout << "tasks list size = " << tasks_list[ii].size() << std::endl;
     }
 
     double lambda = cal_lambda(A, U);
@@ -308,14 +321,22 @@ void scf(Tensor *A, Tensor *U, double tol, uint32_t max_iter) {
                        U[block_ii].size * U[block_jj].size);
             store_offset += U[block_ii].size * U[block_jj].size;
         }
-        MPI_Bcast(J_mpi.data, size_rank0, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        MPI_Bcast(J_mpi.data + size_rank0, size_rank1, MPI_DOUBLE, 1, MPI_COMM_WORLD);
+
+
+        int jmpi_copy_offset = 0;
+        for (int ii = 0; ii < mpi_size; ii++) {
+            MPI_Bcast(J_mpi.data+jmpi_copy_offset, size_rank[ii], MPI_DOUBLE, ii, MPI_COMM_WORLD);
+            jmpi_copy_offset += size_rank[ii];
+        }
+
+        MPI_Barrier(MPI_COMM_WORLD);
 
         refact_J(J, J_mpi, shape);
 
 		X.norm();
         auto res = cal_res(&J, &X, lambda);
 
+        if (mpi_rank == 0)
         std::cout << iter << "-th scf iteration: lambda is " << lambda << ", residual is " << res << std::endl;
 
         svd_solve(&J, &X, lambda);
