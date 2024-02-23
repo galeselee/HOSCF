@@ -16,17 +16,17 @@
 #include "omp.h"
 #include "mkl.h"
 
-#define NDIM 7
+int NDIM=7;
 
 std::chrono::system_clock::time_point tnow() {
     return std::chrono::system_clock::now();
 }
 
-void pti(std::chrono::system_clock::time_point time, std::string info="", int iter=-1) {
+void pti(std::chrono::system_clock::time_point time, int repeat_num, std::string info="", int iter=-1) {
     auto now_ = tnow();
     auto time_span = std::chrono::duration_cast<std::chrono::milliseconds >(now_ - time);
     auto pt = time_span.count();
-    std::cout << info << " time/ms = "<<std::to_string(pt)<<std::endl;
+    std::cout << info << " time/ms = "<<std::to_string(pt/repeat_num)<<std::endl;
 }
 
 double randn() {
@@ -350,7 +350,7 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
     int iter = 0;
     double lambda = 0.0;
     double AF = fnorm_ptr(A->data, A->size);
-    while (std::abs(residual - residual_last) > tol && iter < max_iter) {
+    while (iter < max_iter) {
         for (int ii = 0; ii < ndim; ii++) {
             Tensor ret;
             ttvc_except_dim(A, U, &ret, ii);
@@ -361,19 +361,28 @@ void als(Tensor *A, Tensor *U, double tol, int max_iter) {
         residual_last = residual;
         residual = std::sqrt(1 - (lambda * lambda) / (AF * AF));
         iter ++;
-        std::cout << "iter = " << iter << ", lambda = " << lambda << ", residual = " << residual
-                 << ", error_delta = " << std::abs(residual - residual_last) << std::endl;
+        // std::cout << "iter = " << iter << ", lambda = " << lambda << ", residual = " << residual
+                //  << ", error_delta = " << std::abs(residual - residual_last) << std::endl;
     }
 }
 
 int main(int argc, char **argv) {
+    int repeat_num = 1;
 	if (argc < 2) {
 		std::cout << "INFO : use default omp num threads 8" << std::endl;
 		omp_set_num_threads(8);
 	}
-	else {
+	else if(argc == 2) {
 		omp_set_num_threads(std::stoi(argv[1]));
+	} else if(argc == 3) {
+		omp_set_num_threads(std::stoi(argv[1]));
+        NDIM = std::stoi(argv[2]);
+	} else if(argc == 4) {
+		omp_set_num_threads(std::stoi(argv[1]));
+        NDIM = std::stoi(argv[2]);
+        repeat_num = std::stoi(argv[3]);
 	}
+
 
     vint shapeA;
     if (NDIM == 8) {
@@ -382,19 +391,19 @@ int main(int argc, char **argv) {
         }
     }
     else if (NDIM == 7) {
-        for (int ii = 0; ii < 3; ii++)
-            shapeA.push_back(16);
-        for (int ii = 0; ii < 4; ii++)
-            shapeA.push_back(8);
+         for (int ii = 0; ii < 3; ii++)
+             shapeA.push_back(16);
+         for (int ii = 0; ii < 4; ii++)
+             shapeA.push_back(8);
     } else if (NDIM == 6) {
         for (int ii = 0; ii < 6; ii++) {
-            shapeA.push_back(16);
+             shapeA.push_back(16);
         }
     } else if (NDIM == 5) {
-        for (int ii = 0; ii < 4; ii++) {
-            shapeA.push_back(32);
-        }
-        shapeA.push_back(16);
+         for (int ii = 0; ii < 4; ii++) {
+             shapeA.push_back(32);
+         }
+         shapeA.push_back(16);
     } else {
         for (int ii = 0; ii < 4; ii++) {
             shapeA.push_back(64);
@@ -420,7 +429,7 @@ int main(int argc, char **argv) {
     }
    
     for (int ii = 0; ii < A.size; ii++) {
-        A.data[ii] = randn();
+        A.data[ii] = rand();
     }
   
     Tensor U[ndim];
@@ -429,16 +438,24 @@ int main(int argc, char **argv) {
         U[ii].size = shapeA[ndim-1-ii];
         U[ii].shape.push_back(shapeA[ndim-1-ii]);
         U[ii].data = (double*)std::malloc(sizeof(double) * U[ii].size);
-        for(int jj = 0; jj < U[ii].size; jj++)
-            U[ii].data[jj] = randn();
-        double a = fnorm_ptr(U[ii].data, U[ii].size);
-        for(int jj = 0; jj < U[ii].size; jj++)
-            U[ii].data[jj] /= a;
     }
 
-	auto tt = tnow();
-    als(&A, U, 1e-12, 10);
-	pti(tt, "total time");
+    int repeat_counter = repeat_num;
+
+    auto tt = tnow();
+    while(repeat_counter--) {
+        for (int ii = 0; ii < ndim; ii++) {
+            for(int jj = 0; jj < U[ii].size; jj++)
+                U[ii].data[jj] = rand();
+            double a = fnorm_ptr(U[ii].data, U[ii].size);
+            for(int jj = 0; jj < U[ii].size; jj++)
+                U[ii].data[jj] /= a;
+        }
+
+        als(&A, U, 1e-12, 10);
+    }
+    pti(tt, repeat_num, "Avg time ");
+
     std::free(A.data);
     for (int ii = 0; ii < ndim; ii++) {
         std::free(U[ii].data);
