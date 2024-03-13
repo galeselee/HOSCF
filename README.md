@@ -1,3 +1,5 @@
+Best rank-one approximation is one of the most fundamental tasks in tensor computation. In order to fully exploit modern multi-core parallel computers, we build a bridge between the rank-one approximation of tensors and the eigenvector-dependent nonlinear eigenvalue problem (NEPv), and then develop an efficient decoupling algorithm, namely the higher-order self-consistent field (HOSCF) algorithm. We implement the HOSCF algorithm in C++ language with OpenMP multi-threading and MPI multi-processes, and the involved linear algebra operations such as eigensolver available from the Intel MKL library.
+
 ## ENV
 There are two ways for env, spack and oneapi.
 ### [spack](https://spack.readthedocs.io/en/latest/getting_started.html#)
